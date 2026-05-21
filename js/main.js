@@ -23,6 +23,17 @@ const PROJECTS = [
     demo: 'demos/deepseed/'
   },
   {
+    name: 'GPU Training Lab',
+    category: 'LLM Training & Infra',
+    tagline: 'Multi-GPU training & post-training notebooks.',
+    desc: '~25 hands-on notebooks — distributed training (DeepSpeed, multi-GPU), post-training (DPO, GRPO, RLHF, LoRA/QLoRA, full fine-tuning), and multimodal, diffusion & audio — all runnable for free on Kaggle and Colab.',
+    tech: ['PyTorch', 'DeepSpeed', 'Jupyter'],
+    featured: true,
+    visibility: 'public',
+    code: 'https://github.com/sugeerth/gpu-training-notebooks',
+    demo: 'https://sugeerth.github.io/gpu-training-notebooks/'
+  },
+  {
     name: 'ML System Design Handbook',
     category: 'ML Education',
     tagline: 'An ML system design handbook.',
