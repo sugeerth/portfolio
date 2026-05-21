@@ -203,7 +203,11 @@ function renderProjects() {
     if (av !== bv) return av - bv;
     return (b.featured ? 1 : 0) - (a.featured ? 1 : 0);
   });
-  grid.innerHTML = ordered.map(p => {
+  // Bento sizing: the first two featured public projects become wide hero tiles.
+  let wideUsed = 0;
+  grid.innerHTML = ordered.map((p, i) => {
+    const isWide = p.featured && p.visibility === 'public' && wideUsed < 2;
+    if (isWide) wideUsed++;
     const badges = p.tech.map(t => `<span class="tech-badge">${escapeHtml(t)}</span>`).join('');
 
     const featured = p.featured
@@ -232,19 +236,26 @@ function renderProjects() {
       ? actions.join('')
       : `<span class="card-note">${ICON_LOCK} Private — available on request</span>`;
 
+    const cls = ['card'];
+    if (p.featured) cls.push('card-featured-state');
+    if (isWide) cls.push('card-wide');
+
     return `
-      <article class="card${p.featured ? ' card-featured-state' : ''}" data-category="${escapeHtml(p.category)}">
-        <div class="card-top">
-          <span class="card-cat">${escapeHtml(p.category)}</span>
-          <div class="card-tags">
-            ${featured}
-            ${visBadge}
+      <article class="${cls.join(' ')}" data-category="${escapeHtml(p.category)}">
+        <div class="card-glow" aria-hidden="true"></div>
+        <div class="card-body">
+          <div class="card-top">
+            <span class="card-cat">${escapeHtml(p.category)}</span>
+            <div class="card-tags">
+              ${featured}
+              ${visBadge}
+            </div>
           </div>
+          <h3 class="card-name">${escapeHtml(p.name)}</h3>
+          <p class="card-tagline">${escapeHtml(p.tagline)}</p>
+          <p class="card-desc">${escapeHtml(p.desc)}</p>
+          <div class="card-tech">${badges}</div>
         </div>
-        <h3 class="card-name">${escapeHtml(p.name)}</h3>
-        <p class="card-tagline">${escapeHtml(p.tagline)}</p>
-        <p class="card-desc">${escapeHtml(p.desc)}</p>
-        <div class="card-tech">${badges}</div>
         <div class="card-actions">${actionsHtml}</div>
       </article>`;
   }).join('');
@@ -365,6 +376,19 @@ function initCounters() {
   nums.forEach(n => io.observe(n));
 }
 
+/* ---------- Pointer-tracking glow on cards ---------- */
+function initCardGlow() {
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduced || window.matchMedia('(hover: none)').matches) return;
+  document.querySelectorAll('.card').forEach(card => {
+    card.addEventListener('pointermove', (e) => {
+      const r = card.getBoundingClientRect();
+      card.style.setProperty('--mx', `${e.clientX - r.left}px`);
+      card.style.setProperty('--my', `${e.clientY - r.top}px`);
+    });
+  });
+}
+
 /* ---------- Sticky nav + scroll-spy ---------- */
 function initNav() {
   const nav = document.getElementById('nav');
@@ -423,5 +447,6 @@ document.addEventListener('DOMContentLoaded', () => {
   initNav();
   initReveal();
   initCounters();
+  initCardGlow();
   initYear();
 });
