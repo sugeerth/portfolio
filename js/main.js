@@ -25,7 +25,7 @@ const PROJECTS = [
   {
     name: 'ML System Design Handbook',
     category: 'ML Education',
-    tagline: 'A FAANG-grade ML system design handbook.',
+    tagline: 'An ML system design handbook.',
     desc: '12 chapters with an interactive web viewer, rendered Mermaid architecture diagrams, full-text search, and 18 worked interview problems.',
     tech: ['Vanilla JS', 'Marked', 'Mermaid'],
     featured: true,
@@ -58,7 +58,7 @@ const PROJECTS = [
   {
     name: 'Production RAG',
     category: 'RAG & Retrieval',
-    tagline: 'Production-grade Retrieval-Augmented Generation system.',
+    tagline: 'A retrieval-augmented generation system.',
     desc: 'Hybrid BM25+vector search, cross-encoder reranking, inline citations, and full answer traceability over private documents.',
     tech: ['Python', 'FastAPI', 'ChromaDB', 'Ollama'],
     featured: true,
