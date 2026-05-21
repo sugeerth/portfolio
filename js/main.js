@@ -31,7 +31,7 @@ const PROJECTS = [
     featured: true,
     visibility: 'private',
     code: null,
-    demo: 'demos/system-design/'
+    demo: null
   },
   {
     name: 'GNN Explorer',
