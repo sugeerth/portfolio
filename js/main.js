@@ -185,7 +185,14 @@ function isExternal(url) { return /^https?:\/\//.test(url); }
 /* ---------- Render project cards ---------- */
 function renderProjects() {
   const grid = document.getElementById('projectGrid');
-  grid.innerHTML = PROJECTS.map(p => {
+  // Highlight projects first: public / open-source repos lead, featured first within each group
+  const ordered = [...PROJECTS].sort((a, b) => {
+    const av = a.visibility === 'public' ? 0 : 1;
+    const bv = b.visibility === 'public' ? 0 : 1;
+    if (av !== bv) return av - bv;
+    return (b.featured ? 1 : 0) - (a.featured ? 1 : 0);
+  });
+  grid.innerHTML = ordered.map(p => {
     const badges = p.tech.map(t => `<span class="tech-badge">${escapeHtml(t)}</span>`).join('');
 
     const featured = p.featured
