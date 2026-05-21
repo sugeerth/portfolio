@@ -218,6 +218,10 @@ function renderProjects() {
       ? `<span class="tag tag-public">${ICON_GLOBE} Public</span>`
       : `<span class="tag tag-private">${ICON_LOCK} Private</span>`;
 
+    const demoBadge = p.demo
+      ? `<span class="tag tag-interactive">${ICON_ARROW} Interactive demo</span>`
+      : '';
+
     // Action buttons
     const actions = [];
     if (p.code) {
@@ -229,7 +233,9 @@ function renderProjects() {
       const ext = isExternal(p.demo);
       actions.push(
         `<a class="card-btn card-btn-demo" href="${escapeHtml(p.demo)}"` +
-        `${ext ? ' target="_blank" rel="noopener"' : ''}>${ICON_ARROW} Live Demo</a>`
+        `${ext ? ' target="_blank" rel="noopener"' : ''}` +
+        ` aria-label="Open the live interactive demo for ${escapeHtml(p.name)}">` +
+        `${ICON_ARROW} Live Demo</a>`
       );
     }
     const actionsHtml = actions.length
@@ -247,6 +253,7 @@ function renderProjects() {
           <div class="card-top">
             <span class="card-cat">${escapeHtml(p.category)}</span>
             <div class="card-tags">
+              ${demoBadge}
               ${featured}
               ${visBadge}
             </div>

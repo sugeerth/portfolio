@@ -1,7 +1,8 @@
 # Sugeerth Murugesan — Portfolio
 
-A fast, single-page developer portfolio showcasing 12 ML / AI engineering projects across
-agentic systems, LLM training infrastructure, retrieval-augmented generation, and observability.
+A fast, single-page portfolio for an ML / AI Research Engineer, showcasing 13 projects across
+LLM training infrastructure, agentic systems, retrieval-augmented generation, and observability —
+research-grade ideas built into working systems.
 
 **Live site:** https://sugeerth.github.io/portfolio/
 
