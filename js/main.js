@@ -51,8 +51,8 @@ const PROJECTS = [
     desc: 'Captures LLM calls, tool invocations, and multi-step decision trees into searchable, annotated traces with a live dashboard.',
     tech: ['Python', 'FastAPI', 'SQLite'],
     featured: true,
-    visibility: 'private',
-    code: null,
+    visibility: 'public',
+    code: 'https://github.com/sugeerth/agent-trace-viz',
     demo: null
   },
   {
@@ -95,8 +95,8 @@ const PROJECTS = [
     desc: 'Agent-DAG tracing, multi-LLM judge panels, failure prediction, and time-travel debugging.',
     tech: ['Python', 'FastAPI', 'React', 'Ollama'],
     featured: false,
-    visibility: 'private',
-    code: null,
+    visibility: 'public',
+    code: 'https://github.com/sugeerth/simple_agent_tracer',
     demo: null
   },
   {
@@ -117,8 +117,8 @@ const PROJECTS = [
     desc: 'Side-by-side comparison of four distributed-training strategies — Single-GPU, DDP, FSDP, and DeepSpeed ZeRO-2 — with live loss curves and throughput metrics, reproducible on free Colab/Kaggle GPUs.',
     tech: ['Python', 'PyTorch', 'Jupyter'],
     featured: false,
-    visibility: 'private',
-    code: null,
+    visibility: 'public',
+    code: 'https://github.com/sugeerth/multi-gpu-training-viz',
     demo: null
   },
   {
