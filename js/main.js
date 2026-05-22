@@ -419,7 +419,7 @@ function initNav() {
   );
 
   // Scroll-spy: highlight current section in nav
-  const sections = ['about', 'projects', 'expertise', 'contact']
+  const sections = ['about', 'projects', 'research', 'expertise', 'contact']
     .map(id => document.getElementById(id))
     .filter(Boolean);
   const navMap = {};

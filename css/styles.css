@@ -927,6 +927,150 @@ a { color: inherit; text-decoration: none; }
 }
 
 /* ============================================================
+   Research
+   ============================================================ */
+.research { background: var(--bg-soft); border-top: 1px solid var(--border); }
+.research-meta {
+  margin-top: 28px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.research-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: -.2px;
+  color: var(--on-accent, #fff);
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  border: 1px solid var(--accent);
+  padding: 9px 16px;
+  border-radius: 9px;
+  box-shadow: 0 6px 18px -8px var(--accent-glow);
+  transition: transform .2s var(--ease), box-shadow .2s var(--ease);
+}
+.research-link:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px -8px var(--accent-glow);
+}
+.research-tag {
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--mono);
+  letter-spacing: .2px;
+  color: var(--text-dim);
+  background: var(--bg-elev);
+  border: 1px solid var(--border-soft);
+  padding: 7px 12px;
+  border-radius: 100px;
+}
+.research-list {
+  margin-top: 32px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 18px;
+}
+.pub-item {
+  position: relative;
+  background: var(--bg-card-solid);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px 26px 22px;
+  overflow: hidden;
+  transition: border-color .25s var(--ease), transform .25s var(--ease),
+              box-shadow .25s var(--ease);
+}
+.pub-item::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: linear-gradient(180deg, var(--accent), var(--accent-2));
+  transform: scaleY(0);
+  transform-origin: top;
+  transition: transform .35s var(--ease);
+}
+.pub-item:hover {
+  border-color: var(--border-hi);
+  transform: translateY(-4px);
+  box-shadow: var(--card-shadow-soft);
+}
+.pub-item:hover::before { transform: scaleY(1); }
+.pub-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.pub-title {
+  font-family: var(--display);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -.3px;
+  line-height: 1.34;
+  color: var(--heading);
+  flex: 1;
+  min-width: 0;
+}
+.pub-title a { color: inherit; }
+.pub-title a:hover { color: var(--accent-hi); }
+.pub-badge {
+  flex-shrink: 0;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .4px;
+  text-transform: uppercase;
+  color: var(--accent-hi);
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-line);
+  padding: 4px 9px;
+  border-radius: 7px;
+  white-space: nowrap;
+}
+.pub-venue {
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--text-faint);
+  font-weight: 500;
+}
+.pub-links {
+  margin-top: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.pub-links a {
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--mono);
+  color: var(--text-dim);
+  background: var(--bg-elev);
+  border: 1px solid var(--border-soft);
+  padding: 5px 11px;
+  border-radius: 7px;
+  transition: border-color .2s var(--ease), color .2s var(--ease),
+              background .2s var(--ease);
+}
+.pub-links a:hover {
+  border-color: var(--accent);
+  color: var(--accent-hi);
+  background: var(--accent-soft);
+}
+.research-note {
+  margin-top: 24px;
+  font-size: 14px;
+  color: var(--text-faint);
+}
+.research-note a {
+  color: var(--accent-hi);
+  font-weight: 600;
+  border-bottom: 1px solid var(--accent-line);
+}
+.research-note a:hover { border-bottom-color: var(--accent); }
+
+/* ============================================================
    Contact
    ============================================================ */
 .contact { position: relative; text-align: center; overflow: hidden; }
@@ -1018,6 +1162,7 @@ a { color: inherit; text-decoration: none; }
 @media (max-width: 880px) {
   .expertise-grid { grid-template-columns: 1fr; }
   .about-grid { grid-template-columns: 1fr; gap: 22px; }
+  .research-list { grid-template-columns: 1fr; }
 }
 @media (max-width: 720px) {
   .nav-toggle { display: flex; }
