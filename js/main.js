@@ -446,6 +446,43 @@ function initYear() {
   if (el) el.textContent = new Date().getFullYear();
 }
 
+/* ---------- Light / dark theme toggle ----------
+   The theme is applied pre-paint by an inline <head> script (no flash).
+   Default is 'light' for first-time visitors; the choice persists in
+   localStorage. This wires up the nav button and keeps state in sync.
+   ------------------------------------------------------------ */
+function initThemeToggle() {
+  const root = document.documentElement;
+  const btn = document.getElementById('themeToggle');
+  const meta = document.getElementById('themeColorMeta');
+  const THEME_COLOR = { light: '#f4f2ee', dark: '#0a0c12' };
+
+  function currentTheme() {
+    return root.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+  }
+
+  function applyTheme(theme) {
+    root.setAttribute('data-theme', theme);
+    if (meta) meta.setAttribute('content', THEME_COLOR[theme]);
+    if (btn) {
+      const next = theme === 'light' ? 'dark' : 'light';
+      btn.setAttribute('aria-label', `Switch to ${next} theme`);
+      btn.setAttribute('title', `Switch to ${next} theme`);
+    }
+  }
+
+  // Sync any state the inline script set (meta tag, aria labels).
+  applyTheme(currentTheme());
+
+  if (btn) {
+    btn.addEventListener('click', () => {
+      const next = currentTheme() === 'light' ? 'dark' : 'light';
+      applyTheme(next);
+      try { localStorage.setItem('theme', next); } catch (e) { /* storage blocked */ }
+    });
+  }
+}
+
 /* ---------- Boot ---------- */
 document.addEventListener('DOMContentLoaded', () => {
   renderProjects();
@@ -456,4 +493,5 @@ document.addEventListener('DOMContentLoaded', () => {
   initCounters();
   initCardGlow();
   initYear();
+  initThemeToggle();
 });
