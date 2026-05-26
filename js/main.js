@@ -14,9 +14,9 @@ const PROJECTS = [
   {
     name: 'Neural Audio Codec',
     category: 'LLM Training & Infra',
-    tagline: 'A residual-VQ neural audio codec at 1.35 kbps.',
-    desc: 'A SoundStream / EnCodec-style audio codec — 24 kHz waveforms encoded into discrete tokens through residual vector quantization at ~285× compression vs PCM-16, trained end-to-end on Apple Silicon with multi-scale STFT loss and live SI-SDR tracking.',
-    tech: ['PyTorch', 'MPS', 'Residual VQ', 'Multi-scale STFT'],
+    tagline: 'Shrink a voice clip 142× — still understandable.',
+    desc: 'A small AI model that compresses speech down to text-message size while keeping it intelligible — the same kind of model that powers AI voice assistants like Moshi. Trained end-to-end on real speech; runs entirely in your browser via onnxruntime-web, so you can try it on your own voice without uploading anything.',
+    tech: ['PyTorch', 'MPS', 'Residual VQ', 'ONNX', 'onnxruntime-web'],
     featured: true,
     visibility: 'private',
     code: null,

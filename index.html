@@ -134,8 +134,163 @@
       </div>
     </div>
   </div>
-  <a href="#about" class="scroll-cue" aria-label="Scroll down"><span></span></a>
+  <a href="#featured" class="scroll-cue" aria-label="Scroll down"><span></span></a>
 </header>
+
+<!-- ===== Featured: Neural Audio Codec ===== -->
+<section class="section featured-codec" id="featured">
+  <style>
+    .featured-codec {
+      background: linear-gradient(180deg, transparent, rgba(123, 97, 255, 0.04) 30%, transparent);
+    }
+    .featured-codec .featured-card {
+      background: linear-gradient(135deg, rgba(123,97,255,0.07), rgba(0,212,255,0.04));
+      border: 1px solid rgba(123, 97, 255, 0.22);
+      border-radius: 18px;
+      padding: 32px 34px;
+      position: relative;
+      overflow: hidden;
+    }
+    [data-theme="dark"] .featured-codec .featured-card {
+      background: linear-gradient(135deg, rgba(123,97,255,0.12), rgba(0,212,255,0.05));
+      border-color: rgba(123, 97, 255, 0.32);
+    }
+    .featured-codec .featured-eyebrow {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: rgba(123, 97, 255, 0.14);
+      color: #7b61ff;
+      font-weight: 700; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 5px 11px; border-radius: 999px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .featured-codec .featured-eyebrow .pulse {
+      width: 7px; height: 7px; border-radius: 50%; background: #4ade80;
+      box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.5);
+      animation: feat-pulse 2s infinite;
+    }
+    @keyframes feat-pulse {
+      0% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.5); }
+      70% { box-shadow: 0 0 0 8px rgba(74, 222, 128, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0); }
+    }
+    .featured-codec h2 {
+      font-size: clamp(26px, 3vw, 36px);
+      line-height: 1.15; margin: 14px 0 12px;
+      font-weight: 800; letter-spacing: -0.01em;
+    }
+    .featured-codec .featured-lead {
+      max-width: 720px; line-height: 1.65; margin: 0 0 22px;
+    }
+    .featured-codec .featured-tags {
+      display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 24px;
+    }
+    .featured-codec .featured-tags span {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: var(--text-2, #aab0c5);
+      font-size: 11px; padding: 4px 9px; border-radius: 999px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    [data-theme="light"] .featured-codec .featured-tags span {
+      background: rgba(0,0,0,0.03); border-color: rgba(0,0,0,0.06);
+    }
+    .featured-codec .featured-ab {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 22px;
+    }
+    @media (max-width: 720px) { .featured-codec .featured-ab { grid-template-columns: 1fr; } }
+    .featured-codec .ab {
+      background: rgba(10, 14, 28, 0.5);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 12px; padding: 14px 16px;
+    }
+    [data-theme="light"] .featured-codec .ab {
+      background: rgba(255,255,255,0.6); border-color: rgba(0,0,0,0.06);
+    }
+    .featured-codec .ab-title {
+      display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px;
+    }
+    .featured-codec .ab-title strong { font-size: 13px; font-weight: 600; }
+    .featured-codec .ab-title .kbps {
+      font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-3, #6b7390);
+    }
+    .featured-codec audio { width: 100%; height: 34px; }
+    .featured-codec .featured-actions {
+      display: flex; gap: 12px; flex-wrap: wrap; align-items: center;
+    }
+    .featured-codec .featured-actions .live-note {
+      font-size: 12px; color: var(--text-3, #6b7390);
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .featured-codec .featured-metrics {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 10px; margin-bottom: 22px;
+    }
+    .featured-codec .metric {
+      background: rgba(10, 14, 28, 0.4);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 10px; padding: 11px 14px;
+    }
+    [data-theme="light"] .featured-codec .metric {
+      background: rgba(255,255,255,0.55); border-color: rgba(0,0,0,0.05);
+    }
+    .featured-codec .metric .lbl {
+      color: var(--text-3, #6b7390); font-size: 10px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.07em;
+    }
+    .featured-codec .metric .val {
+      font-family: 'JetBrains Mono', monospace; font-size: 18px; font-weight: 700;
+      margin-top: 4px; color: var(--text, #e8e8ee);
+    }
+    [data-theme="light"] .featured-codec .metric .val { color: var(--text, #11162a); }
+  </style>
+
+  <div class="section-inner reveal">
+    <div class="featured-card">
+      <span class="featured-eyebrow"><span class="pulse"></span> Latest · live in your browser</span>
+      <h2>I shrank a voice clip <span class="grad">142× smaller</span> — listen below</h2>
+      <p class="featured-lead">
+        I trained a small AI model that compresses speech down to roughly the size of a text message
+        while keeping it understandable. Hit play on the left to hear the original recording, then
+        play the right one — that's the same voice squeezed through the model and reconstructed.
+        The same technology powers AI voice assistants like Moshi and VALL-E. <strong>Try it on
+        your own voice</strong> — it runs entirely in your browser, your audio never leaves your
+        machine.
+      </p>
+
+      <div class="featured-metrics">
+        <div class="metric"><div class="lbl">Original size</div><div class="val">384 kbps</div></div>
+        <div class="metric"><div class="lbl">Compressed</div><div class="val">2.7 kbps</div></div>
+        <div class="metric"><div class="lbl">Smaller by</div><div class="val">142×</div></div>
+        <div class="metric"><div class="lbl">Still recognizable?</div><div class="val">Yes — listen</div></div>
+      </div>
+
+      <div class="featured-ab">
+        <div class="ab">
+          <div class="ab-title"><strong>Original voice clip</strong> <span class="kbps">~1.2 MB / 5 sec</span></div>
+          <audio controls preload="none" src="demos/audio-codec/assets/sample_0_original.wav"></audio>
+        </div>
+        <div class="ab">
+          <div class="ab-title"><strong>Through the model — 142× smaller</strong> <span class="kbps">~8 KB / 5 sec</span></div>
+          <audio controls preload="none" src="demos/audio-codec/assets/sample_0_recon_q4.wav"></audio>
+        </div>
+      </div>
+
+      <div class="featured-actions">
+        <a href="demos/audio-codec/" class="btn btn-primary">
+          Try it on your own voice
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+        </a>
+        <a href="demos/audio-codec/#how" class="btn btn-ghost">How it works</a>
+        <span class="live-note">Runs in your browser via WebAssembly · no server, no upload</span>
+      </div>
+
+      <div class="featured-tags">
+        <span>PyTorch</span><span>MPS</span><span>Residual VQ</span>
+        <span>Multi-scale STFT</span><span>ONNX</span><span>onnxruntime-web</span>
+      </div>
+    </div>
+  </div>
+</section>
 
 <!-- ===== About ===== -->
 <section class="section about" id="about">

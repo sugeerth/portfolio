@@ -169,15 +169,25 @@
     Back to portfolio
   </a>
 
-  <p class="eyebrow">Audio · Codec · Self-supervised</p>
-  <h1>Neural <span class="grad">Audio Codec</span><br/>at 0.675–2.7 kbps</h1>
+  <p class="eyebrow">Audio · Live in your browser</p>
+  <h1>Shrink a voice clip <span class="grad">142× smaller</span> — and still understand it</h1>
   <p class="lead">
-    A residual vector-quantized autoencoder (SoundStream / EnCodec family), trained end-to-end on
-    real <strong>LibriSpeech</strong> speech on Apple Silicon. The encoder turns 24&nbsp;kHz audio
-    into a stream of integer codes at 75&nbsp;Hz; the decoder turns them back into a waveform. One
-    trained model serves <strong>three different bitrates</strong> — pick how many codebooks to
-    keep at decode time and the quality scales with the bits you spend.
+    A small AI model that learns to compress speech end-to-end. A 5-second voice clip that normally
+    takes ~1.2&nbsp;MB shrinks to ~8&nbsp;KB — small enough to send over a 1990s dial-up modem —
+    while still being clearly intelligible. The same kind of model powers AI voice assistants
+    like <a href="https://moshi.chat" target="_blank" rel="noopener">Moshi</a> and modern speech
+    synthesis systems. <strong>Record your own voice below</strong> to hear it through the model —
+    it runs entirely in your browser; your audio never leaves your machine.
   </p>
+
+  <div class="callout" style="margin: 18px 0 22px; max-width: 760px;">
+    <strong>How to read this page:</strong>
+    <ol style="margin: 8px 0 0; padding-left: 22px; color: var(--text-2);">
+      <li><strong>Section 00</strong> — try it: record your voice and hear it through the model</li>
+      <li><strong>Section 01</strong> — pick from 6 pre-recorded speech samples at 3 quality levels</li>
+      <li><strong>Sections 02–10</strong> — for the curious: how the model was trained and why this matters</li>
+    </ol>
+  </div>
 
   <div class="tags">
     <span class="tag">PyTorch</span>
@@ -215,11 +225,11 @@
 
   <!-- =================== TRY YOUR VOICE =================== -->
   <section class="section" id="try">
-    <h2><span class="num">00</span>Encode your own voice — live, in the browser</h2>
+    <h2><span class="num">00</span>Try it on your own voice</h2>
     <p class="lead-mini">
-      Record from your microphone (or upload a clip), pick a bitrate, and the trained codec runs
-      entirely in your browser via <code>onnxruntime-web</code>. No server round-trip — the encoder
-      and decoder weights stream once, then every encode is local.
+      Hit <strong>Start recording</strong>, say a sentence or two (up to 6 seconds), then stop.
+      The model runs entirely in your browser — your voice is never uploaded anywhere. Pick a
+      quality level to choose how much you compress: lower quality = much smaller file size.
     </p>
 
     <div class="player" id="tryPlayer">
@@ -232,11 +242,11 @@
           </div>
         </div>
         <div class="control-group">
-          <span class="label">Bitrate</span>
+          <span class="label">Quality (smaller ← → bigger)</span>
           <div class="seg" id="tryBitrateSeg">
-            <button data-n="1">1 cb · 0.675 kbps</button>
-            <button data-n="2">2 cb · 1.35 kbps</button>
-            <button data-n="4" class="active">4 cb · 2.7 kbps</button>
+            <button data-n="1">Low · 0.675 kbps</button>
+            <button data-n="2">Mid · 1.35 kbps</button>
+            <button data-n="4" class="active">High · 2.7 kbps</button>
           </div>
         </div>
       </div>
@@ -287,10 +297,11 @@
 
   <!-- =================== LISTEN =================== -->
   <section class="section" id="listen">
-    <h2><span class="num">01</span>Listen — pick a sample, pick a bitrate</h2>
+    <h2><span class="num">01</span>Pre-recorded examples</h2>
     <p class="lead-mini">
-      Six held-out LibriSpeech utterances. Each is encoded into integer codes, then decoded back
-      from <strong>1, 2, or 4 codebooks</strong>. More codebooks = more bits = better quality.
+      Six clips of real human speech (from the LibriSpeech audiobook dataset), each compressed
+      and rebuilt at three quality levels. Hit play on each version to hear the trade-off — the
+      lowest quality is about <strong>568× smaller</strong> than the original.
     </p>
 
     <div class="player">
