@@ -133,7 +133,33 @@
   .toc a:hover { color: var(--text); background: rgba(255,255,255,0.04); text-decoration: none; }
 
   .pending { color: var(--text-3); font-style: italic; font-size: 13px; }
+
+  /* try-your-voice */
+  .primary-btn {
+    background: linear-gradient(135deg, #7b61ff, #5e3eff);
+    color: #fff; border: none; padding: 10px 18px; font-size: 13px; font-weight: 600;
+    border-radius: 8px; cursor: pointer; font-family: inherit; display: inline-flex; align-items: center; gap: 8px;
+    box-shadow: 0 4px 14px rgba(123, 97, 255, 0.4);
+  }
+  .primary-btn:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
+  .primary-btn:hover:not(:disabled) { filter: brightness(1.12); }
+  .primary-btn.recording { background: linear-gradient(135deg, #ff6b9d, #ff3d6b); box-shadow: 0 4px 14px rgba(255,107,157,0.45); }
+
+  .model-status {
+    display: flex; align-items: center; gap: 10px; margin-top: 14px;
+    color: var(--text-3); font-size: 12px; font-family: 'JetBrains Mono', monospace;
+  }
+  .model-status .dot { width: 8px; height: 8px; border-radius: 50%; background: #6b7390; flex-shrink: 0; }
+  .model-status .dot.loading { background: #fbbf24; animation: pulse 1.2s infinite; }
+  .model-status .dot.ready   { background: #4ade80; }
+  .model-status .dot.error   { background: #f87171; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  canvas.wave { width: 100%; background: #0a0e1c; border-radius: 6px; border: 1px solid var(--border); }
 </style>
+
+<!-- onnxruntime-web for in-browser inference -->
+<script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/ort.min.js" defer></script>
 </head>
 <body>
 <div class="wrap">
@@ -165,6 +191,7 @@
   </div>
 
   <div class="toc">
+    <a href="#try">00 Encode your voice</a>
     <a href="#listen">01 Listen</a>
     <a href="#training">02 Training</a>
     <a href="#specs">03 Spectrograms</a>
@@ -185,6 +212,78 @@
     <div class="stat"><div class="stat-label">Best SI-SDR</div><div class="stat-value" id="m-sdr">–</div><div class="stat-sub">dB at 2.7 kbps</div></div>
     <div class="stat"><div class="stat-label">Train time</div><div class="stat-value" id="m-time">–</div><div class="stat-sub" id="m-device">on MPS</div></div>
   </div>
+
+  <!-- =================== TRY YOUR VOICE =================== -->
+  <section class="section" id="try">
+    <h2><span class="num">00</span>Encode your own voice — live, in the browser</h2>
+    <p class="lead-mini">
+      Record from your microphone (or upload a clip), pick a bitrate, and the trained codec runs
+      entirely in your browser via <code>onnxruntime-web</code>. No server round-trip — the encoder
+      and decoder weights stream once, then every encode is local.
+    </p>
+
+    <div class="player" id="tryPlayer">
+      <div class="controls" style="gap: 24px;">
+        <div class="control-group">
+          <span class="label">Input</span>
+          <div class="seg" id="inputSeg">
+            <button data-mode="mic" class="active">🎙 Record</button>
+            <button data-mode="upload">⤴ Upload</button>
+          </div>
+        </div>
+        <div class="control-group">
+          <span class="label">Bitrate</span>
+          <div class="seg" id="tryBitrateSeg">
+            <button data-n="1">1 cb · 0.675 kbps</button>
+            <button data-n="2">2 cb · 1.35 kbps</button>
+            <button data-n="4" class="active">4 cb · 2.7 kbps</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="micUi" style="margin-top: 16px;">
+        <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+          <button id="recordBtn" class="primary-btn">Start recording</button>
+          <span id="recordStatus" class="mono" style="color: var(--text-3); font-size: 13px;">ready · max 6 seconds</span>
+        </div>
+      </div>
+
+      <div id="uploadUi" style="margin-top: 16px; display: none;">
+        <label style="display: flex; gap: 12px; align-items: center; cursor: pointer;">
+          <input type="file" id="fileInput" accept="audio/*" style="display: none;" />
+          <span id="fileBtn" class="primary-btn">Choose audio file</span>
+          <span id="fileName" class="mono" style="color: var(--text-3); font-size: 13px;">no file chosen · WAV / MP3 / M4A · up to 6 s used</span>
+        </label>
+      </div>
+
+      <div id="modelStatus" class="model-status">
+        <span class="dot" id="modelDot"></span>
+        <span id="modelStatusText">Model not loaded yet — will load on first encode (~25 MB, one-time)</span>
+      </div>
+
+      <div class="try-results" id="tryResults" style="display: none; margin-top: 22px;">
+        <div class="ab">
+          <div class="ab-card">
+            <div class="ttl"><h4>Your input</h4><span class="meta" id="tryInputMeta">–</span></div>
+            <div class="sdr">&nbsp;</div>
+            <canvas class="wave" id="origWave" height="60"></canvas>
+            <audio id="tryOrig" controls preload="auto" style="margin-top: 8px;"></audio>
+          </div>
+          <div class="ab-card">
+            <div class="ttl"><h4 id="tryReconTitle">Reconstructed</h4><span class="meta" id="tryReconMeta">–</span></div>
+            <div class="sdr" id="trySdr">SI-SDR –</div>
+            <canvas class="wave" id="reconWave" height="60"></canvas>
+            <audio id="tryRecon" controls preload="auto" style="margin-top: 8px;"></audio>
+          </div>
+        </div>
+        <div class="callout" style="margin-top: 14px;">
+          <strong>Pipeline:</strong> resample to 24 kHz → <em>encoder.onnx</em> (320× downsample to 75 Hz latent)
+          → residual VQ (JS, against the trained codebooks) → <em>decoder.onnx</em> (320× upsample) →
+          play. Encode time per second of input is shown in the meta line.
+        </div>
+      </div>
+    </div>
+  </section>
 
   <!-- =================== LISTEN =================== -->
   <section class="section" id="listen">
@@ -658,6 +757,381 @@ q_st = z + (q - z).detach()</pre>
   window.addEventListener('resize', () => {
     fetch('assets/loss.json').then(r => r.json()).then(drawLoss);
   });
+</script>
+
+<!-- ===== Encode-your-voice: ONNX inference in the browser ===== -->
+<script>
+(function() {
+  'use strict';
+
+  const MAX_SEC = 6;
+  const SR = 24000;
+  const ONNX_BASE = 'assets/onnx/';
+
+  // ---- State ----
+  let mode = 'mic';            // 'mic' | 'upload'
+  let nActive = 4;
+  let inputWaveform = null;    // Float32Array @ SR
+  let reconWaveform = null;
+  let metaBytes = 0;
+
+  let modelMeta = null;
+  let codebooks = null;        // Float32Array, view of shape [nC, K, D]
+  let encSession = null, decSession = null;
+  let loadPromise = null;
+  let oggMime = null;
+
+  let recorder = null;
+  let recChunks = [];
+  let recStart = 0;
+  let recStream = null;
+
+  // ---- DOM ----
+  const $ = id => document.getElementById(id);
+  const recordBtn = $('recordBtn');
+  const recordStatus = $('recordStatus');
+  const fileInput = $('fileInput');
+  const fileBtn = $('fileBtn');
+  const fileName = $('fileName');
+  const dot = $('modelDot');
+  const modelStatusText = $('modelStatusText');
+  const tryResults = $('tryResults');
+  const tryOrig = $('tryOrig');
+  const tryRecon = $('tryRecon');
+  const origWave = $('origWave');
+  const reconWave = $('reconWave');
+  const trySdr = $('trySdr');
+  const tryInputMeta = $('tryInputMeta');
+  const tryReconMeta = $('tryReconMeta');
+  const tryReconTitle = $('tryReconTitle');
+  const micUi = $('micUi');
+  const uploadUi = $('uploadUi');
+
+  // ---- Mode tabs ----
+  document.querySelectorAll('#inputSeg button').forEach(b => {
+    b.addEventListener('click', () => {
+      document.querySelectorAll('#inputSeg button').forEach(x => x.classList.toggle('active', x === b));
+      mode = b.dataset.mode;
+      micUi.style.display    = mode === 'mic'    ? '' : 'none';
+      uploadUi.style.display = mode === 'upload' ? '' : 'none';
+    });
+  });
+
+  document.querySelectorAll('#tryBitrateSeg button').forEach(b => {
+    b.addEventListener('click', async () => {
+      document.querySelectorAll('#tryBitrateSeg button').forEach(x => x.classList.toggle('active', x === b));
+      nActive = parseInt(b.dataset.n, 10);
+      // Re-encode current input at new bitrate if we have one
+      if (inputWaveform) {
+        await encodeAndPlay();
+      }
+    });
+  });
+
+  // ---- Status helpers ----
+  function setStatus(state, text) {
+    dot.classList.remove('loading', 'ready', 'error');
+    if (state) dot.classList.add(state);
+    if (text) modelStatusText.textContent = text;
+  }
+
+  function fmtBytes(n) { return n > 1e6 ? (n/1e6).toFixed(1)+' MB' : (n/1e3).toFixed(0)+' kB'; }
+
+  // ---- Lazy load the model ----
+  async function loadModel() {
+    if (loadPromise) return loadPromise;
+    loadPromise = (async () => {
+      if (typeof ort === 'undefined') {
+        setStatus('error', 'onnxruntime-web failed to load — refresh and try again');
+        throw new Error('ort missing');
+      }
+      // Use WASM SIMD if available; threads disabled for simplicity (works without COOP/COEP)
+      ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/';
+      ort.env.wasm.numThreads = 1;
+      ort.env.logLevel = 'warning';
+
+      setStatus('loading', 'Loading codec metadata…');
+      modelMeta = await (await fetch(ONNX_BASE + 'codec.meta.json')).json();
+
+      setStatus('loading', `Downloading encoder + decoder + codebooks (~25 MB, one time)…`);
+      const [encBuf, decBuf, cbBuf] = await Promise.all([
+        fetch(ONNX_BASE + modelMeta.encoder_onnx).then(r => r.arrayBuffer()),
+        fetch(ONNX_BASE + modelMeta.decoder_onnx).then(r => r.arrayBuffer()),
+        fetch(ONNX_BASE + modelMeta.codebooks_bin).then(r => r.arrayBuffer()),
+      ]);
+      metaBytes = encBuf.byteLength + decBuf.byteLength + cbBuf.byteLength;
+      codebooks = new Float32Array(cbBuf);
+
+      setStatus('loading', 'Initialising WASM inference sessions…');
+      [encSession, decSession] = await Promise.all([
+        ort.InferenceSession.create(encBuf, { executionProviders: ['wasm'] }),
+        ort.InferenceSession.create(decBuf, { executionProviders: ['wasm'] }),
+      ]);
+
+      setStatus('ready', `Model ready · ${fmtBytes(metaBytes)} cached locally`);
+    })();
+    return loadPromise;
+  }
+
+  // ---- Mic recording ----
+  recordBtn.addEventListener('click', async () => {
+    if (recorder && recorder.state === 'recording') {
+      recorder.stop();
+      return;
+    }
+    try {
+      if (!recStream) {
+        recStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      }
+      recorder = new MediaRecorder(recStream);
+      recChunks = [];
+      recorder.ondataavailable = e => recChunks.push(e.data);
+      recorder.onstop = async () => {
+        recordBtn.classList.remove('recording');
+        recordBtn.textContent = 'Start recording';
+        const elapsed = ((Date.now() - recStart) / 1000).toFixed(1);
+        recordStatus.textContent = `captured ${elapsed} s · decoding…`;
+        const blob = new Blob(recChunks, { type: recorder.mimeType || 'audio/webm' });
+        await handleAudioBlob(blob, `mic capture (${elapsed} s)`);
+      };
+      recorder.start();
+      recStart = Date.now();
+      recordBtn.classList.add('recording');
+      recordBtn.textContent = 'Stop recording';
+      recordStatus.textContent = 'recording… (auto-stops at 6 s)';
+      setTimeout(() => {
+        if (recorder && recorder.state === 'recording') recorder.stop();
+      }, MAX_SEC * 1000);
+    } catch (e) {
+      recordStatus.textContent = 'mic blocked — check browser permissions';
+      console.error(e);
+    }
+  });
+
+  // ---- File upload ----
+  fileBtn.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', async () => {
+    const f = fileInput.files[0];
+    if (!f) return;
+    fileName.textContent = `${f.name} · decoding…`;
+    await handleAudioBlob(f, f.name);
+  });
+
+  // ---- Audio decode → resample → encode/decode ----
+  async function handleAudioBlob(blob, label) {
+    try {
+      // Use a 24 kHz context so decodeAudioData resamples for us.
+      const ctx = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(1, SR * MAX_SEC, SR);
+      const arr = await blob.arrayBuffer();
+      const buf = await ctx.decodeAudioData(arr.slice(0));
+      // Take mono (mix down if stereo)
+      let mono;
+      if (buf.numberOfChannels === 1) {
+        mono = buf.getChannelData(0).slice();
+      } else {
+        const L = buf.getChannelData(0), R = buf.getChannelData(1);
+        mono = new Float32Array(L.length);
+        for (let i = 0; i < L.length; i++) mono[i] = 0.5 * (L[i] + R[i]);
+      }
+      // Already at SR? AudioContext at sampleRate=SR returns at native rate, may differ.
+      // For safety, if buf.sampleRate !== SR, resample via OfflineAudioContext render.
+      if (Math.abs(buf.sampleRate - SR) > 1) {
+        const off = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(
+          1, Math.ceil(buf.duration * SR), SR);
+        const src = off.createBufferSource();
+        src.buffer = buf;
+        src.connect(off.destination);
+        src.start();
+        const rendered = await off.startRendering();
+        mono = rendered.getChannelData(0).slice();
+      }
+      // clamp to MAX_SEC and normalise lightly
+      if (mono.length > SR * MAX_SEC) mono = mono.subarray(0, SR * MAX_SEC);
+      // Pad to multiple of 320 (HOP) for clean encoder geometry
+      const HOP = 320;
+      const Tpad = Math.ceil(mono.length / HOP) * HOP;
+      if (Tpad !== mono.length) {
+        const padded = new Float32Array(Tpad);
+        padded.set(mono);
+        mono = padded;
+      }
+      // peak-normalise to ~0.9
+      let peak = 0;
+      for (let i = 0; i < mono.length; i++) peak = Math.max(peak, Math.abs(mono[i]));
+      if (peak > 0) for (let i = 0; i < mono.length; i++) mono[i] *= 0.9 / peak;
+
+      inputWaveform = mono;
+      tryInputMeta.textContent = `${label} · ${SR/1000} kHz · ${mono.length} samples (${(mono.length/SR).toFixed(2)} s)`;
+
+      await loadModel();
+      await encodeAndPlay();
+    } catch (e) {
+      console.error(e);
+      setStatus('error', 'decode failed — try a different file');
+      recordStatus.textContent = 'decode failed — try again';
+    }
+  }
+
+  // ---- Encode + decode ----
+  async function encodeAndPlay() {
+    if (!inputWaveform || !encSession) return;
+
+    setStatus('loading', `Encoding @ ${nActive} codebook${nActive>1?'s':''}…`);
+    const t0 = performance.now();
+
+    // 1. Encoder: waveform [1,1,T] → latent [1,D,T_lat]
+    const T = inputWaveform.length;
+    const waveTensor = new ort.Tensor('float32', inputWaveform, [1, 1, T]);
+    const encOut = await encSession.run({ waveform: waveTensor });
+    const latentTensor = encOut.latent;          // [1, D, T_lat]
+    const D = latentTensor.dims[1];
+    const Tlat = latentTensor.dims[2];
+    const latent = latentTensor.data;            // Float32Array length D*Tlat (row-major [D,T])
+
+    // 2. Residual VQ in JS — codebooks shape [nCodebooksMax, K, D]
+    const nCmax = modelMeta.codebooks_shape[0];
+    const K     = modelMeta.codebooks_shape[1];
+    const D2    = modelMeta.codebooks_shape[2];
+    if (D2 !== D) throw new Error('latent dim mismatch');
+
+    const residual = new Float32Array(latent);   // copy
+    const quant = new Float32Array(D * Tlat);
+    for (let cb = 0; cb < nActive; cb++) {
+      const bookOff = cb * K * D;
+      for (let t = 0; t < Tlat; t++) {
+        // squared distance vs each codebook entry
+        let bestIdx = 0, bestDist = Infinity;
+        for (let k = 0; k < K; k++) {
+          let dist = 0;
+          for (let d = 0; d < D; d++) {
+            const diff = residual[d * Tlat + t] - codebooks[bookOff + k * D + d];
+            dist += diff * diff;
+          }
+          if (dist < bestDist) { bestDist = dist; bestIdx = k; }
+        }
+        // q = codebook[bestIdx]; quant += q; residual -= q
+        const qOff = bookOff + bestIdx * D;
+        for (let d = 0; d < D; d++) {
+          const qd = codebooks[qOff + d];
+          quant[d * Tlat + t]   += qd;
+          residual[d * Tlat + t] -= qd;
+        }
+      }
+    }
+
+    // 3. Decoder: quantized latent [1,D,T_lat] → waveform [1,1,T]
+    const quantTensor = new ort.Tensor('float32', quant, [1, D, Tlat]);
+    const decOut = await decSession.run({ latent_q: quantTensor });
+    const reconTensor = decOut.waveform_hat;
+    const recon = reconTensor.data;
+    const Tout = reconTensor.dims[2];
+
+    const elapsed = (performance.now() - t0) / 1000;
+    const inputSec = T / SR;
+    const ratio = (elapsed / inputSec).toFixed(2);
+    const kbps = modelMeta.bitrate_modes.find(m => m.n_codebooks === nActive).kbps;
+
+    reconWaveform = recon.slice(0, Math.min(Tout, T));
+
+    // SI-SDR (sample-wise)
+    const sdr = siSdr(inputWaveform.subarray(0, reconWaveform.length), reconWaveform);
+
+    // Set up audio elements
+    tryOrig.src  = float32ToWavBlobUrl(inputWaveform, SR);
+    tryRecon.src = float32ToWavBlobUrl(reconWaveform, SR);
+    tryReconTitle.textContent = `Reconstructed @ ${nActive} codebook${nActive>1?'s':''}`;
+    tryReconMeta.textContent = `${kbps} kbps · ${elapsed.toFixed(2)} s encode (${ratio}× realtime, ${nActive*9}-bit/frame)`;
+    trySdr.textContent = `SI-SDR ${sdr >= 0 ? '+' : ''}${sdr.toFixed(2)} dB`;
+
+    drawWave(origWave, inputWaveform);
+    drawWave(reconWave, reconWaveform);
+    tryResults.style.display = '';
+    setStatus('ready', `Encoded in ${elapsed.toFixed(2)} s · model cached (${fmtBytes(metaBytes)})`);
+  }
+
+  // ---- SI-SDR ----
+  function siSdr(y, y_hat) {
+    const N = Math.min(y.length, y_hat.length);
+    let ym = 0, yhm = 0;
+    for (let i = 0; i < N; i++) { ym += y[i]; yhm += y_hat[i]; }
+    ym /= N; yhm /= N;
+    let dot = 0, yy = 0;
+    for (let i = 0; i < N; i++) {
+      const a = y[i] - ym;
+      const b = y_hat[i] - yhm;
+      dot += a * b;
+      yy  += a * a;
+    }
+    const alpha = dot / (yy + 1e-12);
+    let s = 0, n = 0;
+    for (let i = 0; i < N; i++) {
+      const target = alpha * (y[i] - ym);
+      const noise  = (y_hat[i] - yhm) - target;
+      s += target * target;
+      n += noise * noise;
+    }
+    return 10 * Math.log10((s + 1e-12) / (n + 1e-12));
+  }
+
+  // ---- WAV blob from Float32Array ----
+  function float32ToWavBlobUrl(samples, sr) {
+    const N = samples.length;
+    const buf = new ArrayBuffer(44 + N * 2);
+    const dv = new DataView(buf);
+    let p = 0;
+    const writeStr = s => { for (let i = 0; i < s.length; i++) dv.setUint8(p++, s.charCodeAt(i)); };
+    writeStr('RIFF');
+    dv.setUint32(p, 36 + N * 2, true); p += 4;
+    writeStr('WAVE'); writeStr('fmt ');
+    dv.setUint32(p, 16, true); p += 4;
+    dv.setUint16(p, 1, true);  p += 2;          // PCM
+    dv.setUint16(p, 1, true);  p += 2;          // mono
+    dv.setUint32(p, sr, true); p += 4;
+    dv.setUint32(p, sr * 2, true); p += 4;      // byte rate
+    dv.setUint16(p, 2, true);  p += 2;          // block align
+    dv.setUint16(p, 16, true); p += 2;          // bits/sample
+    writeStr('data');
+    dv.setUint32(p, N * 2, true); p += 4;
+    for (let i = 0; i < N; i++) {
+      let s = Math.max(-1, Math.min(1, samples[i]));
+      dv.setInt16(p, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+      p += 2;
+    }
+    return URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
+  }
+
+  // ---- Waveform render ----
+  function drawWave(canvas, samples) {
+    const dpr = window.devicePixelRatio || 1;
+    const W = canvas.clientWidth, H = canvas.height;
+    canvas.width = W * dpr; canvas.style.height = H + 'px';
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, 1);
+    ctx.clearRect(0, 0, W, H);
+    // background midline
+    ctx.strokeStyle = '#1a2040'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(0, H/2); ctx.lineTo(W, H/2); ctx.stroke();
+    // waveform
+    ctx.fillStyle = 'rgba(123,97,255,0.55)';
+    ctx.strokeStyle = '#7b61ff'; ctx.lineWidth = 1;
+    const step = Math.max(1, Math.floor(samples.length / W));
+    ctx.beginPath();
+    for (let x = 0; x < W; x++) {
+      let lo = 1, hi = -1;
+      const start = x * step;
+      const end = Math.min(samples.length, start + step);
+      for (let i = start; i < end; i++) {
+        if (samples[i] < lo) lo = samples[i];
+        if (samples[i] > hi) hi = samples[i];
+      }
+      const y1 = H/2 - hi * H/2 * 0.9;
+      const y2 = H/2 - lo * H/2 * 0.9;
+      ctx.moveTo(x + 0.5, y1);
+      ctx.lineTo(x + 0.5, y2);
+    }
+    ctx.stroke();
+  }
+})();
 </script>
 </body>
 </html>

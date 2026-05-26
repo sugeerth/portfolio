@@ -1,50 +1,50 @@
 {
   "codebook_0": {
-    "total_used": 355,
+    "total_used": 351,
     "capacity": 512,
-    "perplexity": 256.6,
+    "perplexity": 203.2,
     "top_5_counts": [
-      54,
-      22,
-      20,
-      15,
-      12
+      108,
+      41,
+      25,
+      24,
+      16
     ]
   },
   "codebook_1": {
-    "total_used": 387,
+    "total_used": 388,
     "capacity": 512,
-    "perplexity": 284.9,
+    "perplexity": 277.9,
     "top_5_counts": [
-      22,
-      20,
+      33,
+      24,
       18,
-      18,
-      17
+      17,
+      16
     ]
   },
   "codebook_2": {
-    "total_used": 408,
+    "total_used": 386,
     "capacity": 512,
-    "perplexity": 298.0,
+    "perplexity": 271.6,
     "top_5_counts": [
-      39,
-      21,
+      43,
+      28,
+      25,
       19,
-      17,
       14
     ]
   },
   "codebook_3": {
-    "total_used": 405,
+    "total_used": 404,
     "capacity": 512,
-    "perplexity": 304.8,
+    "perplexity": 290.5,
     "top_5_counts": [
-      24,
-      21,
+      39,
+      23,
       19,
       18,
-      14
+      16
     ]
   }
 }

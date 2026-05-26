@@ -1,0 +1,31 @@
+{
+  "sample_rate": 24000,
+  "hop": 320,
+  "latent_dim": 128,
+  "n_codebooks": 4,
+  "codebook_size": 512,
+  "codebooks_dtype": "float32",
+  "codebooks_shape": [
+    4,
+    512,
+    128
+  ],
+  "codebooks_bytes": 1048576,
+  "encoder_onnx": "encoder.onnx",
+  "decoder_onnx": "decoder.onnx",
+  "codebooks_bin": "codebooks.bin",
+  "bitrate_modes": [
+    {
+      "n_codebooks": 1,
+      "kbps": 0.675
+    },
+    {
+      "n_codebooks": 2,
+      "kbps": 1.35
+    },
+    {
+      "n_codebooks": 4,
+      "kbps": 2.7
+    }
+  ]
+}

@@ -10,21 +10,21 @@
       "bitrate_bps": 675.0,
       "bitrate_kbps": 0.675,
       "compression_ratio_vs_pcm16": 568.9,
-      "mean_si_sdr_db": -2.85
+      "mean_si_sdr_db": -2.55
     },
     {
       "n_codebooks": 2,
       "bitrate_bps": 1350.0,
       "bitrate_kbps": 1.35,
       "compression_ratio_vs_pcm16": 284.4,
-      "mean_si_sdr_db": -2.37
+      "mean_si_sdr_db": -1.96
     },
     {
       "n_codebooks": 4,
       "bitrate_bps": 2700.0,
       "bitrate_kbps": 2.7,
       "compression_ratio_vs_pcm16": 142.2,
-      "mean_si_sdr_db": -2.08
+      "mean_si_sdr_db": -1.71
     }
   ],
   "steps": 1500,
@@ -32,5 +32,5 @@
   "crop_seconds": 1.5,
   "corpus": "LibriSpeech dev-clean dummy slice (73 utterances, ~8 min)",
   "device": "mps",
-  "train_seconds": 578.1
+  "train_seconds": 560.9
 }
