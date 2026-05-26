@@ -1,0 +1,50 @@
+{
+  "codebook_0": {
+    "total_used": 355,
+    "capacity": 512,
+    "perplexity": 256.6,
+    "top_5_counts": [
+      54,
+      22,
+      20,
+      15,
+      12
+    ]
+  },
+  "codebook_1": {
+    "total_used": 387,
+    "capacity": 512,
+    "perplexity": 284.9,
+    "top_5_counts": [
+      22,
+      20,
+      18,
+      18,
+      17
+    ]
+  },
+  "codebook_2": {
+    "total_used": 408,
+    "capacity": 512,
+    "perplexity": 298.0,
+    "top_5_counts": [
+      39,
+      21,
+      19,
+      17,
+      14
+    ]
+  },
+  "codebook_3": {
+    "total_used": 405,
+    "capacity": 512,
+    "perplexity": 304.8,
+    "top_5_counts": [
+      24,
+      21,
+      19,
+      18,
+      14
+    ]
+  }
+}

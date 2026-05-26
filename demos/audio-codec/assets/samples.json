@@ -1,0 +1,104 @@
+[
+  {
+    "k": 0,
+    "text": "LINNELL'S PICTURES ARE A SORT OF UP GUARDS AND AT EM PAINTINGS AND MASON'S EXQUISITE IDYLLS ARE AS NATIONAL AS A JINGO POEM MISTER BIRKET FOSTER'S LANDSCAPES SMILE AT ONE MUCH IN THE SAME WAY THAT MISTER CARKER USED TO FLASH HIS TEETH AND MISTER JOHN COLLIER GIVES HIS SITTER A CHEERFUL SLAP ON THE BACK BEFORE HE SAYS LIKE A SHAMPOOER IN A TURKISH BATH NEXT MAN",
+    "speaker_id": "1272",
+    "duration_s": 2.5,
+    "original_wav": "sample_0_original.wav",
+    "reconstructions": {
+      "1": "sample_0_recon_q1.wav",
+      "2": "sample_0_recon_q2.wav",
+      "4": "sample_0_recon_q4.wav"
+    },
+    "si_sdr_db": {
+      "1": -5.62,
+      "2": -5.03,
+      "4": -5.05
+    }
+  },
+  {
+    "k": 1,
+    "text": "HE LAMENTS MOST BITTERLY THE DIVORCE THAT HAS BEEN MADE BETWEEN DECORATIVE ART AND WHAT WE USUALLY CALL PICTURES MAKES THE CUSTOMARY APPEAL TO THE LAST JUDGMENT AND REMINDS US THAT IN THE GREAT DAYS OF ART MICHAEL ANGELO WAS THE FURNISHING UPHOLSTERER",
+    "speaker_id": "1272",
+    "duration_s": 2.5,
+    "original_wav": "sample_1_original.wav",
+    "reconstructions": {
+      "1": "sample_1_recon_q1.wav",
+      "2": "sample_1_recon_q2.wav",
+      "4": "sample_1_recon_q4.wav"
+    },
+    "si_sdr_db": {
+      "1": 0.28,
+      "2": 0.8,
+      "4": 1.13
+    }
+  },
+  {
+    "k": 2,
+    "text": "IN FACT HE IS QUITE SEVERE ON MISTER RUSKIN FOR NOT RECOGNISING THAT A PICTURE SHOULD DENOTE THE FRAILTY OF MAN AND REMARKS WITH PLEASING COURTESY AND FELICITOUS GRACE THAT MANY PHASES OF FEELING",
+    "speaker_id": "1272",
+    "duration_s": 2.5,
+    "original_wav": "sample_2_original.wav",
+    "reconstructions": {
+      "1": "sample_2_recon_q1.wav",
+      "2": "sample_2_recon_q2.wav",
+      "4": "sample_2_recon_q4.wav"
+    },
+    "si_sdr_db": {
+      "1": -6.96,
+      "2": -6.63,
+      "4": -6.27
+    }
+  },
+  {
+    "k": 3,
+    "text": "HAVING RETURNED TO THE ROYAL CAVERN KALIKO FIRST POUNDED THE GONG AND THEN SAT IN THE THRONE WEARING RUGGEDO'S DISCARDED RUBY CROWN AND HOLDING IN HIS HAND THE SCEPTRE WHICH RUGGEDO HAD SO OFTEN THROWN AT HIS HEAD",
+    "speaker_id": "1272",
+    "duration_s": 2.5,
+    "original_wav": "sample_3_original.wav",
+    "reconstructions": {
+      "1": "sample_3_recon_q1.wav",
+      "2": "sample_3_recon_q2.wav",
+      "4": "sample_3_recon_q4.wav"
+    },
+    "si_sdr_db": {
+      "1": 2.49,
+      "2": 3.13,
+      "4": 3.58
+    }
+  },
+  {
+    "k": 4,
+    "text": "THE CUT ON HIS CHEST STILL DRIPPING BLOOD THE ACHE OF HIS OVERSTRAINED EYES EVEN THE SOARING ARENA AROUND HIM WITH THE THOUSANDS OF SPECTATORS WERE TRIVIALITIES NOT WORTH THINKING ABOUT",
+    "speaker_id": "1272",
+    "duration_s": 2.5,
+    "original_wav": "sample_4_original.wav",
+    "reconstructions": {
+      "1": "sample_4_recon_q1.wav",
+      "2": "sample_4_recon_q2.wav",
+      "4": "sample_4_recon_q4.wav"
+    },
+    "si_sdr_db": {
+      "1": 0.51,
+      "2": 0.62,
+      "4": 0.82
+    }
+  },
+  {
+    "k": 5,
+    "text": "HE TELLS US THAT AT THIS FESTIVE SEASON OF THE YEAR WITH CHRISTMAS AND ROAST BEEF LOOMING BEFORE US SIMILES DRAWN FROM EATING AND ITS RESULTS OCCUR MOST READILY TO THE MIND",
+    "speaker_id": "1272",
+    "duration_s": 2.5,
+    "original_wav": "sample_5_original.wav",
+    "reconstructions": {
+      "1": "sample_5_recon_q1.wav",
+      "2": "sample_5_recon_q2.wav",
+      "4": "sample_5_recon_q4.wav"
+    },
+    "si_sdr_db": {
+      "1": -7.82,
+      "2": -7.1,
+      "4": -6.66
+    }
+  }
+]

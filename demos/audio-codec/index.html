@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Neural Audio Codec — Sugeerth Murugesan</title>
+<meta name="description" content="A residual-VQ neural audio codec trained end-to-end on real LibriSpeech speech. Live A/B reconstructions at 0.675 / 1.35 / 2.7 kbps, training curves, and deep explanations of how it actually works." />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg:      #0a0c12;
+    --bg-2:    #0f1320;
+    --panel:   #11162a;
+    --panel-2: #161b30;
+    --border:  #1c2240;
+    --border-2:#262d52;
+    --text:    #e8e8ee;
+    --text-2:  #aab0c5;
+    --text-3:  #6b7390;
+    --accent:  #7b61ff;
+    --cyan:    #00d4ff;
+    --green:   #4ade80;
+    --pink:    #ff6b9d;
+    --yellow:  #fbbf24;
+    --red:     #f87171;
+    --r-sm: 8px; --r-md: 12px; --r-lg: 16px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; -webkit-font-smoothing: antialiased; line-height: 1.55; }
+  a { color: var(--cyan); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code, pre, .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+  code { background: #161b30; padding: 1px 6px; border-radius: 4px; font-size: 0.9em; }
+
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 56px 24px 96px; }
+  .back { display: inline-flex; align-items: center; gap: 8px; color: var(--text-2); font-size: 14px; margin-bottom: 28px; }
+  .back:hover { color: var(--text); }
+  .eyebrow { color: var(--accent); font-weight: 600; letter-spacing: 0.1em; font-size: 12px; text-transform: uppercase; }
+  h1 { font-size: clamp(34px, 4.5vw, 52px); line-height: 1.08; margin: 10px 0 14px; font-weight: 800; letter-spacing: -0.02em; }
+  .grad { background: linear-gradient(120deg, #00d4ff, #7b61ff 60%, #ff6b9d); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .lead { color: var(--text-2); font-size: 17px; line-height: 1.65; max-width: 760px; margin: 0 0 24px; }
+  .tags { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0 28px; }
+  .tag { background: var(--panel-2); border: 1px solid var(--border); color: var(--text-2); font-size: 12px; padding: 5px 10px; border-radius: 999px; font-family: 'JetBrains Mono', monospace; }
+
+  .grid-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin: 28px 0 40px; }
+  .stat { background: var(--panel); border: 1px solid var(--border); border-radius: var(--r-md); padding: 16px 18px; }
+  .stat-label { color: var(--text-3); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; }
+  .stat-value { color: var(--text); font-size: 24px; font-weight: 700; margin-top: 6px; font-family: 'JetBrains Mono', monospace; }
+  .stat-sub { color: var(--text-3); font-size: 11px; margin-top: 4px; }
+
+  .section { margin-top: 64px; }
+  h2 { font-size: 24px; margin: 0 0 10px; font-weight: 700; letter-spacing: -0.01em; }
+  h2 .num { color: var(--text-3); font-family: 'JetBrains Mono', monospace; font-size: 14px; margin-right: 12px; font-weight: 500; }
+  h3 { font-size: 17px; margin: 22px 0 8px; font-weight: 600; color: var(--text); }
+  .section p { color: var(--text-2); margin: 0 0 12px; }
+  .section ul { color: var(--text-2); padding-left: 22px; margin: 6px 0 14px; }
+  .section li { margin: 4px 0; }
+  .lead-mini { color: var(--text-2); font-size: 15px; margin: 4px 0 22px; max-width: 760px; }
+
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 22px; }
+
+  /* Sample player */
+  .player { background: var(--panel); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 18px; }
+  .player .controls { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start; margin-bottom: 18px; }
+  .control-group { display: flex; flex-direction: column; gap: 6px; }
+  .control-group .label { color: var(--text-3); font-size: 11px; text-transform: uppercase; font-weight: 600; letter-spacing: 0.06em; }
+  .seg { display: inline-flex; background: var(--panel-2); border: 1px solid var(--border); border-radius: 999px; padding: 3px; }
+  .seg button { background: transparent; border: none; color: var(--text-2); font-family: inherit; font-size: 13px; padding: 6px 14px; border-radius: 999px; cursor: pointer; font-weight: 500; }
+  .seg button.active { background: linear-gradient(135deg, #7b61ff, #5e3eff); color: #fff; box-shadow: 0 4px 14px rgba(123, 97, 255, 0.4); }
+  .seg button:not(.active):hover { color: var(--text); background: rgba(255,255,255,0.04); }
+
+  .transcript { background: #0a0e1c; border: 1px solid var(--border); border-radius: var(--r-md); padding: 12px 14px; font-size: 13px; color: var(--text-2); font-family: 'JetBrains Mono', monospace; margin: 14px 0 16px; line-height: 1.5; }
+  .transcript .lbl { color: var(--text-3); margin-right: 6px; }
+
+  .ab { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 720px) { .ab { grid-template-columns: 1fr; } }
+  .ab-card { background: #0d1224; border: 1px solid var(--border); border-radius: var(--r-md); padding: 14px 16px; }
+  .ab-card .ttl { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
+  .ab-card h4 { margin: 0; font-size: 14px; color: var(--text); font-weight: 600; }
+  .ab-card .meta { color: var(--text-3); font-size: 11px; font-family: 'JetBrains Mono', monospace; }
+  .ab-card .sdr { color: var(--green); font-family: 'JetBrains Mono', monospace; font-size: 12px; margin: 2px 0 10px; }
+  .ab-card audio { width: 100%; height: 36px; }
+
+  canvas { display: block; width: 100%; height: 320px; background: #0a0e1c; border-radius: var(--r-sm); }
+  .legend { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 12px; font-size: 12px; color: var(--text-2); font-family: 'JetBrains Mono', monospace; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { display: inline-block; width: 12px; height: 3px; border-radius: 2px; }
+
+  .spec-img { width: 100%; border-radius: var(--r-sm); display: block; border: 1px solid var(--border); }
+
+  pre.code { background: #080b16; border: 1px solid var(--border); border-radius: var(--r-md); padding: 18px 20px; overflow-x: auto; font-size: 13px; line-height: 1.6; color: #d8dcef; }
+  .kw  { color: #c792ea; }
+  .fn  { color: #82aaff; }
+  .str { color: #c3e88d; }
+  .nm  { color: #f78c6c; }
+  .com { color: #5c6370; font-style: italic; }
+  .ty  { color: #ffcb6b; }
+
+  .why { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-top: 8px; }
+  .why .card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--r-md); padding: 16px 18px; }
+  .why .card h3 { margin: 0 0 6px; font-size: 14px; color: var(--accent); font-weight: 600; }
+  .why .card p { font-size: 13px; color: var(--text-2); margin: 0; }
+
+  .pipeline { background: var(--panel); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 22px; }
+  .pipeline svg { width: 100%; height: auto; }
+
+  .callout { background: linear-gradient(135deg, rgba(123,97,255,.08), rgba(0,212,255,.04)); border: 1px solid var(--border-2); border-left: 3px solid var(--accent); padding: 14px 18px; border-radius: var(--r-md); margin: 16px 0; color: var(--text-2); font-size: 14px; }
+
+  .usage-bars { display: grid; gap: 14px; margin-top: 12px; }
+  .usage-row { display: grid; grid-template-columns: 90px 1fr 90px; gap: 12px; align-items: center; }
+  .usage-row .lbl { font-family: 'JetBrains Mono', monospace; color: var(--text-2); font-size: 12px; }
+  .usage-row .bar { background: #0a0e1c; border-radius: 4px; height: 10px; overflow: hidden; border: 1px solid var(--border); }
+  .usage-row .bar > div { height: 100%; background: linear-gradient(90deg, #7b61ff, #00d4ff); }
+  .usage-row .val { font-family: 'JetBrains Mono', monospace; color: var(--text-3); font-size: 11px; text-align: right; }
+
+  .toc { display: flex; flex-wrap: wrap; gap: 8px; margin: 26px 0 12px; }
+  .toc a { background: var(--panel-2); border: 1px solid var(--border); color: var(--text-2); padding: 5px 11px; border-radius: 999px; font-size: 12px; font-family: 'JetBrains Mono', monospace; }
+  .toc a:hover { color: var(--text); background: rgba(255,255,255,0.04); text-decoration: none; }
+
+  .pending { color: var(--text-3); font-style: italic; font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <a class="back" href="../../index.html">
+    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    Back to portfolio
+  </a>
+
+  <p class="eyebrow">Audio · Codec · Self-supervised</p>
+  <h1>Neural <span class="grad">Audio Codec</span><br/>at 0.675–2.7 kbps</h1>
+  <p class="lead">
+    A residual vector-quantized autoencoder (SoundStream / EnCodec family), trained end-to-end on
+    real <strong>LibriSpeech</strong> speech on Apple Silicon. The encoder turns 24&nbsp;kHz audio
+    into a stream of integer codes at 75&nbsp;Hz; the decoder turns them back into a waveform. One
+    trained model serves <strong>three different bitrates</strong> — pick how many codebooks to
+    keep at decode time and the quality scales with the bits you spend.
+  </p>
+
+  <div class="tags">
+    <span class="tag">PyTorch</span>
+    <span class="tag">MPS</span>
+    <span class="tag">Residual VQ</span>
+    <span class="tag">Quantizer dropout</span>
+    <span class="tag">Multi-scale STFT</span>
+    <span class="tag">SI-SDR</span>
+    <span class="tag">LibriSpeech</span>
+    <span class="tag">24 kHz</span>
+  </div>
+
+  <div class="toc">
+    <a href="#listen">01 Listen</a>
+    <a href="#training">02 Training</a>
+    <a href="#specs">03 Spectrograms</a>
+    <a href="#how">04 How it works</a>
+    <a href="#rvq">05 Residual VQ</a>
+    <a href="#dropout">06 Quantizer dropout</a>
+    <a href="#st">07 Straight-through</a>
+    <a href="#loss">08 The loss</a>
+    <a href="#codebooks">09 Codebook analysis</a>
+    <a href="#why">10 Why this matters</a>
+  </div>
+
+  <div class="grid-stats" id="stats">
+    <div class="stat"><div class="stat-label">Parameters</div><div class="stat-value" id="m-params">–</div><div class="stat-sub">trainable</div></div>
+    <div class="stat"><div class="stat-label">Bitrate range</div><div class="stat-value" id="m-bitrate">–</div><div class="stat-sub">kbps (low → high)</div></div>
+    <div class="stat"><div class="stat-label">Compression</div><div class="stat-value" id="m-compress">–</div><div class="stat-sub">at top quality vs PCM-16</div></div>
+    <div class="stat"><div class="stat-label">Frame rate</div><div class="stat-value" id="m-fr">–</div><div class="stat-sub">Hz latent</div></div>
+    <div class="stat"><div class="stat-label">Best SI-SDR</div><div class="stat-value" id="m-sdr">–</div><div class="stat-sub">dB at 2.7 kbps</div></div>
+    <div class="stat"><div class="stat-label">Train time</div><div class="stat-value" id="m-time">–</div><div class="stat-sub" id="m-device">on MPS</div></div>
+  </div>
+
+  <!-- =================== LISTEN =================== -->
+  <section class="section" id="listen">
+    <h2><span class="num">01</span>Listen — pick a sample, pick a bitrate</h2>
+    <p class="lead-mini">
+      Six held-out LibriSpeech utterances. Each is encoded into integer codes, then decoded back
+      from <strong>1, 2, or 4 codebooks</strong>. More codebooks = more bits = better quality.
+    </p>
+
+    <div class="player">
+      <div class="controls">
+        <div class="control-group">
+          <span class="label">Sample</span>
+          <div class="seg" id="sampleSeg"></div>
+        </div>
+        <div class="control-group">
+          <span class="label">Bitrate</span>
+          <div class="seg" id="bitrateSeg"></div>
+        </div>
+      </div>
+
+      <div class="transcript" id="transcript"><span class="lbl">transcript:</span> <span id="transcriptText">–</span></div>
+
+      <div class="ab">
+        <div class="ab-card">
+          <div class="ttl"><h4>Original</h4><span class="meta">24 kHz · 16-bit PCM · 384 kbps</span></div>
+          <div class="sdr">&nbsp;</div>
+          <audio id="origAudio" controls preload="auto"></audio>
+        </div>
+        <div class="ab-card">
+          <div class="ttl"><h4 id="reconTitle">Reconstructed</h4><span class="meta" id="reconBitrate">–</span></div>
+          <div class="sdr" id="reconSdr">SI-SDR –</div>
+          <audio id="reconAudio" controls preload="auto"></audio>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout" id="bitrateContext">
+      <strong>Context:</strong> MP3 starts at 32 kbps, Opus speech starts around 6 kbps. This codec
+      operates an order of magnitude below either. The model learns to spend its scarce bits on the
+      structure of speech (harmonic stack, formants, transients) rather than per-sample fidelity.
+    </div>
+  </section>
+
+  <!-- =================== TRAINING =================== -->
+  <section class="section" id="training">
+    <h2><span class="num">02</span>Training curves</h2>
+    <p class="lead-mini">
+      All four signals logged every 25 steps. Reconstruction L1 in the time domain, multi-scale STFT
+      loss across the frequency domain, VQ commitment loss, and held-out SI-SDR at full bitrate.
+    </p>
+    <div class="panel" style="margin-top: 14px;">
+      <canvas id="lossCanvas" width="1000" height="320"></canvas>
+      <div class="legend">
+        <span><i style="background:#7b61ff"></i> recon L1</span>
+        <span><i style="background:#00d4ff"></i> multi-scale STFT</span>
+        <span><i style="background:#fbbf24"></i> commit</span>
+        <span><i style="background:#4ade80"></i> SI-SDR @ full (right axis)</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- =================== SPECTROGRAMS =================== -->
+  <section class="section" id="specs">
+    <h2><span class="num">03</span>Spectrogram comparison</h2>
+    <p class="lead-mini">
+      One held-out clip's mel-spectrogram, before and after the codec at each bitrate. As bits
+      drop, fine spectral detail blurs but the harmonic stack and formant trajectories survive —
+      these are the perceptually important parts of speech.
+    </p>
+    <img class="spec-img" id="specImg" alt="Mel spectrogram comparison" src="assets/specs.png" />
+  </section>
+
+  <!-- =================== HOW IT WORKS =================== -->
+  <section class="section" id="how">
+    <h2><span class="num">04</span>How it actually works</h2>
+    <p>
+      A neural audio codec compresses a waveform into a sequence of <em>integer codes</em>, then
+      reconstructs it. The whole pipeline is trained end-to-end so the encoder, the discrete
+      bottleneck, and the decoder co-adapt — the codec learns its own representation of audio
+      instead of using a hand-designed one like MP3 or Opus.
+    </p>
+
+    <div class="pipeline" style="margin: 18px 0;">
+      <!-- Architecture diagram -->
+      <svg viewBox="0 0 980 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Codec architecture">
+        <defs>
+          <linearGradient id="grA" x1="0" x2="1"><stop offset="0" stop-color="#7b61ff"/><stop offset="1" stop-color="#00d4ff"/></linearGradient>
+          <linearGradient id="grB" x1="0" x2="1"><stop offset="0" stop-color="#00d4ff"/><stop offset="1" stop-color="#ff6b9d"/></linearGradient>
+          <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#7b61ff"/></marker>
+        </defs>
+        <style>
+          .lbl { font-family: 'JetBrains Mono', monospace; font-size: 12px; fill: #aab0c5; }
+          .ttl { font-family: Inter, sans-serif; font-size: 14px; font-weight: 600; fill: #e8e8ee; }
+          .sub { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; fill: #6b7390; }
+          .arr { stroke: #7b61ff; stroke-width: 2; fill: none; marker-end: url(#arr); }
+          .box { stroke: #262d52; stroke-width: 1; fill: #11162a; }
+        </style>
+
+        <!-- waveform in -->
+        <text x="60" y="22" class="lbl" text-anchor="middle">waveform</text>
+        <text x="60" y="38" class="sub" text-anchor="middle">24 kHz, T samples</text>
+        <path d="M10,90 Q20,60 30,90 T50,90 T70,90 T90,90 T110,90" stroke="#aab0c5" fill="none" stroke-width="1.4"/>
+
+        <line class="arr" x1="120" y1="90" x2="160" y2="90"/>
+
+        <!-- encoder -->
+        <rect class="box" x="160" y="56" width="180" height="68" rx="8" fill="url(#grA)" opacity="0.18"/>
+        <rect class="box" x="160" y="56" width="180" height="68" rx="8"/>
+        <text x="250" y="84" class="ttl" text-anchor="middle">Encoder</text>
+        <text x="250" y="104" class="sub" text-anchor="middle">strided conv ↓2 ↓4 ↓5 ↓8</text>
+        <text x="250" y="118" class="sub" text-anchor="middle">↓ 320× total</text>
+
+        <line class="arr" x1="340" y1="90" x2="380" y2="90"/>
+
+        <!-- latent -->
+        <text x="408" y="60" class="lbl" text-anchor="middle">latent z</text>
+        <text x="408" y="74" class="sub" text-anchor="middle">75 Hz, 128 dim</text>
+        <g transform="translate(380,82)">
+          <rect x="0" y="0" width="56" height="14" rx="3" class="box" fill="#7b61ff" opacity="0.6"/>
+          <rect x="0" y="18" width="56" height="14" rx="3" class="box" fill="#7b61ff" opacity="0.45"/>
+        </g>
+
+        <line class="arr" x1="442" y1="90" x2="482" y2="90"/>
+
+        <!-- RVQ -->
+        <rect class="box" x="482" y="44" width="190" height="92" rx="8" fill="url(#grB)" opacity="0.18"/>
+        <rect class="box" x="482" y="44" width="190" height="92" rx="8"/>
+        <text x="577" y="64" class="ttl" text-anchor="middle">Residual VQ</text>
+        <text x="577" y="82" class="sub" text-anchor="middle">codebook 1 (512 entries)</text>
+        <text x="577" y="98" class="sub" text-anchor="middle">codebook 2 (512 entries)</text>
+        <text x="577" y="114" class="sub" text-anchor="middle">codebook 3 (512 entries)</text>
+        <text x="577" y="130" class="sub" text-anchor="middle">codebook 4 (512 entries)</text>
+
+        <line class="arr" x1="672" y1="90" x2="712" y2="90"/>
+
+        <!-- decoder -->
+        <rect class="box" x="712" y="56" width="180" height="68" rx="8" fill="url(#grA)" opacity="0.18"/>
+        <rect class="box" x="712" y="56" width="180" height="68" rx="8"/>
+        <text x="802" y="84" class="ttl" text-anchor="middle">Decoder</text>
+        <text x="802" y="104" class="sub" text-anchor="middle">transpose conv ↑8 ↑5 ↑4 ↑2</text>
+        <text x="802" y="118" class="sub" text-anchor="middle">↑ 320× total</text>
+
+        <line class="arr" x1="892" y1="90" x2="932" y2="90"/>
+
+        <!-- waveform out -->
+        <text x="952" y="22" class="lbl" text-anchor="middle">recon</text>
+        <text x="952" y="38" class="sub" text-anchor="middle">24 kHz, T samples</text>
+        <path d="M922,90 Q932,68 942,90 T962,90 T982,90 T1000,90" stroke="#00d4ff" fill="none" stroke-width="1.4"/>
+
+        <!-- bitrate annotation -->
+        <text x="577" y="170" class="lbl" text-anchor="middle">at decode time, choose how many codebooks to use</text>
+        <text x="577" y="190" class="sub" text-anchor="middle">1 → 0.675 kbps   ·   2 → 1.35 kbps   ·   4 → 2.70 kbps</text>
+      </svg>
+    </div>
+
+    <div class="why">
+      <div class="card"><h3>Encoder</h3><p>Four strided 1-D conv stages (strides 2, 4, 5, 8) with dilated residual blocks. 24 000 samples per second → 75 latent vectors per second. The total downsampling factor is 320×.</p></div>
+      <div class="card"><h3>Residual VQ</h3><p>Four stacked codebooks of 512 entries each (9 bits / frame each). Each codebook quantizes the residual the previous one left behind — capacity stacks without raising the frame rate.</p></div>
+      <div class="card"><h3>Decoder</h3><p>Mirror of the encoder built with transposed convolutions. The final <code>tanh</code> head keeps the reconstructed samples inside [-1, 1] so the output is a valid waveform.</p></div>
+      <div class="card"><h3>End-to-end</h3><p>No hand-designed psychoacoustic model. The codec learns which information matters by trying to reconstruct the original waveform under a bitrate budget.</p></div>
+    </div>
+  </section>
+
+  <!-- =================== RVQ =================== -->
+  <section class="section" id="rvq">
+    <h2><span class="num">05</span>Residual vector quantization, step by step</h2>
+    <p>
+      A single VQ codebook with <em>K</em> entries can represent at most <em>K</em> different
+      points per frame — at 512 entries that's only 9 bits. To squeeze more information out of
+      every frame without raising the frame rate (and the bitrate), residual VQ
+      <em>stacks</em> codebooks: the second codebook quantizes the leftover error from the first,
+      the third quantizes the error from the second, and so on.
+    </p>
+    <pre class="code"><span class="com"># Residual VQ — what each iteration of the loop does</span>
+residual = z                            <span class="com"># start with the encoder's continuous latent</span>
+out      = zeros_like(z)
+<span class="kw">for</span> vq <span class="kw">in</span> codebooks:               <span class="com"># 4 codebooks here</span>
+    <span class="com"># nearest-neighbour lookup in this codebook</span>
+    idx = ((residual - vq.codebook) ** <span class="nm">2</span>).sum(-<span class="nm">1</span>).argmin(-<span class="nm">1</span>)
+    q   = vq.codebook[idx]              <span class="com"># the chosen entry</span>
+    out      = out + q                  <span class="com"># add it to our running reconstruction</span>
+    residual = residual - q             <span class="com"># subtract; whatever is left is the new target</span>
+<span class="kw">return</span> out, indices                     <span class="com"># `out` ≈ z; `indices` are the integer codes</span></pre>
+    <p>
+      The <em>encoder output</em> is a continuous vector. The <em>stack of indices</em> is what we
+      transmit (or store, or feed to a downstream language model). The decoder only ever sees
+      <code>out</code>, which is just the sum of codebook entries the indices point to —
+      <strong>everything past the encoder is a discrete sequence of small integers</strong>.
+    </p>
+  </section>
+
+  <!-- =================== QUANTIZER DROPOUT =================== -->
+  <section class="section" id="dropout">
+    <h2><span class="num">06</span>One model, three bitrates: quantizer dropout</h2>
+    <p>
+      Notice that in the sample player above, three different reconstructions of the same clip all
+      come from the <em>same</em> model — we just chose to decode using <code>1</code>,
+      <code>2</code>, or <code>4</code> codebooks. That works because of a small but important
+      training trick from SoundStream and EnCodec: at <em>each</em> training step, we pick a random
+      number of active codebooks and only run that many. The decoder learns to produce a reasonable
+      waveform whether it sees the contribution of one, two, or four codebooks.
+    </p>
+    <pre class="code"><span class="kw">for</span> step <span class="kw">in</span> range(steps):
+    x = next_batch()
+    <span class="com"># pick how many codebooks are active for THIS step</span>
+    n_active = randint(<span class="nm">1</span>, n_codebooks + <span class="nm">1</span>)
+    y, _, commit, codebook = model(x, n_active=n_active)
+    loss = recon_l1(y, x) + multiscale_stft(y, x) + <span class="nm">0.25</span> * commit + codebook
+    loss.backward(); opt.step()</pre>
+    <p>
+      Without this trick, the decoder would over-rely on the highest codebooks and degrade
+      catastrophically when you tried to use fewer of them. With it, you get a single model with a
+      <em>scalable</em> bitrate dial. That's the property that lets a downstream language model
+      stream at low bitrate and a higher-quality renderer decode at full bitrate.
+    </p>
+  </section>
+
+  <!-- =================== STRAIGHT-THROUGH =================== -->
+  <section class="section" id="st">
+    <h2><span class="num">07</span>Back-propagating through an <code>argmin</code></h2>
+    <p>
+      The single trickiest part of training any neural codec: the <code>argmin</code> that picks a
+      codebook entry is <em>not</em> differentiable. There's no gradient that tells the encoder
+      "you should have produced a slightly different latent so a different codebook entry was
+      chosen." If we tried to backprop through it honestly, the encoder would never learn.
+    </p>
+    <p>
+      The <strong>straight-through estimator</strong> sidesteps the problem with a one-liner: in
+      the forward pass we use the quantized vector <code>q</code>; in the backward pass we pretend
+      the lookup was the identity function — gradients flow from the decoder straight back into the
+      continuous latent <code>z</code> as if nothing had been quantized.
+    </p>
+    <pre class="code"><span class="com"># forward = q (discrete), backward = ∂/∂z is identity</span>
+q_st = z + (q - z).detach()</pre>
+    <p>
+      <code>(q - z).detach()</code> is treated as a constant by autograd, so
+      <code>∂q_st / ∂z = 1</code>. The encoder gets a usable gradient, the decoder only ever sees
+      codebook entries, and the codebook itself is moved towards the encoder outputs by a separate
+      <em>commitment loss</em> — the <code>0.25 * commit</code> term above.
+    </p>
+  </section>
+
+  <!-- =================== LOSS =================== -->
+  <section class="section" id="loss">
+    <h2><span class="num">08</span>Why time-domain L1 isn't enough — the multi-scale STFT loss</h2>
+    <p>
+      A naive choice is to just minimise <code>‖y − x‖₁</code> in the time domain. That fails badly
+      for audio: two waveforms can sound identical to a human while being out of phase by a few
+      samples, and the L1 loss will report a huge error. The model would then learn to produce a
+      blurry, over-smoothed signal that minimises pointwise error but sounds awful.
+    </p>
+    <p>
+      Multi-scale STFT loss compares <em>magnitude spectrograms</em> at several FFT resolutions —
+      we no longer care about phase, only about the energy distribution across frequency at
+      different time scales. Big FFT windows catch the long-term harmonic structure; small windows
+      catch transients and consonants. The codec is rewarded for getting the time-frequency
+      <em>shape</em> right, which is closer to what the human ear actually hears.
+    </p>
+    <pre class="code"><span class="kw">def</span> <span class="fn">multiscale_stft_loss</span>(y_hat, y):
+    <span class="kw">return</span> sum(
+        <span class="fn">stft_loss</span>(y_hat, y, n_fft=n, hop=h)
+        <span class="kw">for</span> n, h <span class="kw">in</span> [(<span class="nm">2048</span>, <span class="nm">512</span>), (<span class="nm">1024</span>, <span class="nm">256</span>), (<span class="nm">512</span>, <span class="nm">128</span>), (<span class="nm">256</span>, <span class="nm">64</span>)]
+    ) / <span class="nm">4</span>
+
+<span class="kw">def</span> <span class="fn">stft_loss</span>(y_hat, y, n_fft, hop):
+    Y, Yh = <span class="fn">stft</span>(y, n_fft, hop), <span class="fn">stft</span>(y_hat, n_fft, hop)
+    sc       = (Y.abs() - Yh.abs()).norm() / Y.abs().norm()       <span class="com"># spectral convergence</span>
+    log_mag  = F.<span class="fn">l1_loss</span>(Yh.abs().log(), Y.abs().log())          <span class="com"># log-magnitude L1</span>
+    <span class="kw">return</span> sc + log_mag</pre>
+  </section>
+
+  <!-- =================== CODEBOOK USAGE =================== -->
+  <section class="section" id="codebooks">
+    <h2><span class="num">09</span>Are we actually using all the codebook entries?</h2>
+    <p>
+      "Codebook collapse" is a classic failure mode: the encoder lands on a handful of entries and
+      ignores the rest, throwing away the capacity you paid for. The right diagnostic is each
+      codebook's <em>effective perplexity</em> — <code>exp(H(usage))</code> — which measures the
+      effective number of entries actually being used. For a codebook of size 512, perplexity
+      close to 512 is healthy; close to 1 is collapse.
+    </p>
+    <div class="panel" id="usageBox">
+      <div class="usage-bars" id="usageBars"></div>
+    </div>
+    <p style="margin-top: 14px;">
+      In a healthy RVQ stack the first codebook usually has the highest perplexity (it sees the
+      raw latent and benefits most from spreading entries out); later codebooks have lower
+      perplexity because the residuals they're quantizing are smaller and more concentrated near
+      zero. Watch for any codebook collapsing below ~50 — that's a sign of a sick training run.
+    </p>
+  </section>
+
+  <!-- =================== WHY THIS MATTERS =================== -->
+  <section class="section" id="why">
+    <h2><span class="num">10</span>Why this matters</h2>
+    <p>
+      Discrete audio tokens are the lingua franca of modern generative-audio systems. Every recent
+      speech LM — AudioLM, VALL-E, Moshi, Voicebox, Mimi — sits on top of a neural codec that
+      turns waveforms into integer sequences a transformer can autoregress over. The same
+      architecture appears in:
+    </p>
+    <ul>
+      <li><strong>Conversational speech-to-speech</strong> — Moshi and friends use codec tokens as both input and output of a duplex speech LM.</li>
+      <li><strong>Text-to-speech</strong> — Voicebox, VALL-E, and Bark generate codec tokens conditioned on text; the codec decoder renders them to audio.</li>
+      <li><strong>Speech translation</strong> — token-level translation between languages without round-tripping through text.</li>
+      <li><strong>Codec-based diffusion</strong> — diffusion in the codec latent space instead of raw waveforms.</li>
+      <li><strong>Streaming inference</strong> — low-bitrate codecs let you run real-time audio over noisy networks at &lt; 3 kbps.</li>
+    </ul>
+    <p>
+      This project is the codec piece, built from the ground up so the joints — strided conv
+      geometry, residual VQ math, the straight-through gradient, quantizer dropout, multi-scale
+      STFT loss, codebook diagnostics — are all visible and modifiable. Drop in a different
+      decoder, a different quantizer, a different loss, and the rest of the pipeline keeps working.
+    </p>
+  </section>
+
+</div>
+
+<script>
+  // -------- Load metrics & wire stat tiles --------
+  let SAMPLES = [], METRICS = null;
+
+  Promise.all([
+    fetch('assets/metrics.json').then(r => r.json()),
+    fetch('assets/samples.json').then(r => r.json()),
+    fetch('assets/loss.json').then(r => r.json()),
+    fetch('assets/codebook_usage.json').then(r => r.json()).catch(() => null),
+  ]).then(([m, s, h, u]) => {
+    METRICS = m;
+    SAMPLES = s;
+    document.getElementById('m-params').textContent   = m.params_M + ' M';
+    const rates = m.bitrate_modes.map(b => b.bitrate_kbps);
+    document.getElementById('m-bitrate').textContent  = rates[0] + '–' + rates[rates.length-1];
+    const topMode = m.bitrate_modes[m.bitrate_modes.length-1];
+    document.getElementById('m-compress').textContent = topMode.compression_ratio_vs_pcm16 + '×';
+    document.getElementById('m-fr').textContent       = m.frame_rate_hz;
+    document.getElementById('m-sdr').textContent      = (topMode.mean_si_sdr_db >= 0 ? '+' : '') + topMode.mean_si_sdr_db;
+    document.getElementById('m-time').textContent     = m.train_seconds + 's';
+    document.getElementById('m-device').textContent   = 'on ' + m.device.toUpperCase();
+
+    buildPlayer();
+    drawLoss(h);
+    if (u) drawUsage(u);
+  });
+
+  // -------- Sample / bitrate picker --------
+  let curSample = 0, curBitrate = null;
+
+  function buildPlayer() {
+    const sSeg = document.getElementById('sampleSeg');
+    sSeg.innerHTML = '';
+    SAMPLES.forEach((s, i) => {
+      const b = document.createElement('button');
+      b.textContent = String(i + 1);
+      b.onclick = () => { curSample = i; refreshPlayer(); };
+      sSeg.appendChild(b);
+    });
+
+    const bSeg = document.getElementById('bitrateSeg');
+    bSeg.innerHTML = '';
+    METRICS.bitrate_modes.forEach((b, i) => {
+      const btn = document.createElement('button');
+      btn.textContent = b.n_codebooks + ' cb · ' + b.bitrate_kbps + ' kbps';
+      btn.onclick = () => { curBitrate = b.n_codebooks; refreshPlayer(); };
+      bSeg.appendChild(btn);
+    });
+    // default to the highest bitrate
+    curBitrate = METRICS.bitrate_modes[METRICS.bitrate_modes.length - 1].n_codebooks;
+    refreshPlayer();
+  }
+
+  function refreshPlayer() {
+    const s = SAMPLES[curSample];
+    const mode = METRICS.bitrate_modes.find(b => b.n_codebooks === curBitrate);
+
+    // segment-button highlight
+    document.querySelectorAll('#sampleSeg button').forEach((b, i) => b.classList.toggle('active', i === curSample));
+    document.querySelectorAll('#bitrateSeg button').forEach((b, i) =>
+      b.classList.toggle('active', METRICS.bitrate_modes[i].n_codebooks === curBitrate));
+
+    document.getElementById('transcriptText').textContent = s.text;
+    document.getElementById('origAudio').src = 'assets/' + s.original_wav;
+    document.getElementById('reconAudio').src = 'assets/' + s.reconstructions[curBitrate];
+    document.getElementById('reconTitle').textContent = 'Reconstructed @ ' + curBitrate + (curBitrate === 1 ? ' codebook' : ' codebooks');
+    document.getElementById('reconBitrate').textContent = mode.bitrate_kbps + ' kbps · ' + mode.compression_ratio_vs_pcm16 + '× compression';
+    const sdr = s.si_sdr_db[String(curBitrate)];
+    document.getElementById('reconSdr').textContent = 'SI-SDR ' + (sdr >= 0 ? '+' : '') + sdr.toFixed(2) + ' dB';
+  }
+
+  // -------- Loss-curve canvas --------
+  function drawLoss(h) {
+    const cvs = document.getElementById('lossCanvas');
+    const ctx = cvs.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    const W = cvs.clientWidth, H = cvs.clientHeight;
+    cvs.width = W * dpr; cvs.height = H * dpr; ctx.scale(dpr, dpr);
+
+    const pad = { l: 56, r: 60, t: 18, b: 32 };
+    const innerW = W - pad.l - pad.r;
+    const innerH = H - pad.t - pad.b;
+    ctx.clearRect(0, 0, W, H);
+
+    const steps = h.step;
+    if (!steps || steps.length < 2) return;
+    const xMin = steps[0], xMax = steps[steps.length - 1];
+
+    const lossSeries = [h.recon, h.stft, h.commit];
+    const lMax = Math.max(...lossSeries.flat()) * 1.05;
+    const lMin = 0;
+    const sdrArr = h.si_sdr_full || h.si_sdr || [];
+    const sMin = Math.min(...sdrArr) - 2;
+    const sMax = Math.max(...sdrArr) + 2;
+
+    const sx = s => pad.l + (s - xMin) / (xMax - xMin) * innerW;
+    const syL = v => pad.t + (1 - (v - lMin) / (lMax - lMin)) * innerH;
+    const syR = v => pad.t + (1 - (v - sMin) / (sMax - sMin)) * innerH;
+
+    ctx.strokeStyle = '#1a2040'; ctx.lineWidth = 1;
+    ctx.font = '11px JetBrains Mono, monospace';
+    for (let i = 0; i <= 5; i++) {
+      const y = pad.t + i * innerH / 5;
+      ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(W - pad.r, y); ctx.stroke();
+      const v = lMax - (lMax - lMin) * i / 5;
+      ctx.fillStyle = '#6b7390'; ctx.textAlign = 'right'; ctx.fillText(v.toFixed(2), pad.l - 8, y + 4);
+      const vr = sMax - (sMax - sMin) * i / 5;
+      ctx.fillStyle = '#4ade80'; ctx.textAlign = 'left'; ctx.fillText(vr.toFixed(1), W - pad.r + 8, y + 4);
+    }
+    ctx.fillStyle = '#6b7390'; ctx.textAlign = 'center';
+    for (let i = 0; i <= 5; i++) {
+      const x = pad.l + i * innerW / 5;
+      const s = Math.round(xMin + (xMax - xMin) * i / 5);
+      ctx.fillText(s, x, H - 10);
+    }
+    ctx.fillText('step', pad.l + innerW / 2, H - 2);
+
+    function plot(arr, color, fn = syL, width = 2) {
+      ctx.strokeStyle = color; ctx.lineWidth = width; ctx.lineJoin = 'round';
+      ctx.beginPath();
+      arr.forEach((v, i) => {
+        const x = sx(steps[i]); const y = fn(v);
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+    }
+    plot(h.recon,  '#7b61ff');
+    plot(h.stft,   '#00d4ff');
+    plot(h.commit, '#fbbf24');
+    plot(sdrArr,   '#4ade80', syR, 2.5);
+  }
+
+  // -------- Codebook usage bars --------
+  function drawUsage(u) {
+    const root = document.getElementById('usageBars');
+    root.innerHTML = '';
+    Object.entries(u).forEach(([key, info]) => {
+      const row = document.createElement('div'); row.className = 'usage-row';
+      const lbl = document.createElement('div'); lbl.className = 'lbl';
+      lbl.textContent = key;
+      const bar = document.createElement('div'); bar.className = 'bar';
+      const fill = document.createElement('div');
+      fill.style.width = Math.min(100, (info.perplexity / info.capacity) * 100) + '%';
+      bar.appendChild(fill);
+      const val = document.createElement('div'); val.className = 'val';
+      val.textContent = 'pplx ' + info.perplexity + ' / ' + info.capacity;
+      row.appendChild(lbl); row.appendChild(bar); row.appendChild(val);
+      root.appendChild(row);
+    });
+  }
+
+  window.addEventListener('resize', () => {
+    fetch('assets/loss.json').then(r => r.json()).then(drawLoss);
+  });
+</script>
+</body>
+</html>
