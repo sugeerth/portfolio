@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Traffic Vision — what an off-the-shelf object detector really sees</title>
+<meta name="description" content="An honest, interactive look at running open-source Faster R-CNN frame-by-frame over 60 seconds of 4K traffic footage — 5,136 detections, what it gets right, and where it confidently goes wrong. Runs locally, no API, no cloud." />
+<meta name="author" content="Sugeerth Murugesan" />
+<meta name="theme-color" content="#f4f2ee" id="themeColorMeta" />
+<meta property="og:title" content="Traffic Vision — what an off-the-shelf object detector really sees" />
+<meta property="og:description" content="Open-source Faster R-CNN, run frame-by-frame over 60s of traffic. 5,136 detections, the reliable ones and the confidently-wrong ones, all in your browser." />
+<meta property="og:type" content="website" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+<!-- Theme: apply saved (or default-light) theme before paint, shared with the main portfolio -->
+<script>
+  (function () {
+    try {
+      var saved = localStorage.getItem('theme');
+      var theme = (saved === 'light' || saved === 'dark') ? saved : 'light';
+      document.documentElement.setAttribute('data-theme', theme);
+    } catch (e) {
+      document.documentElement.setAttribute('data-theme', 'light');
+    }
+  })();
+</script>
+
+<style>
+/* ============================================================
+   Traffic Vision — standalone demo
+   Design tokens mirror the main portfolio (Space Grotesk / Inter
+   / JetBrains Mono, accent palette, light + dark). No build step.
+   ============================================================ */
+:root {
+  --radius: 18px; --radius-sm: 11px; --radius-lg: 22px;
+  --maxw: 1120px;
+  --ease: cubic-bezier(.22, 1, .36, 1);
+  --display: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+  --sans: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+:root, :root[data-theme="light"] {
+  --bg: #f4f2ee; --bg-soft: #efece6; --bg-card: #ffffff; --bg-elev: #f3f1ec;
+  --border: #e2ddd3; --border-soft: #d3cdc0; --border-hi: #bdb5a3;
+  --text: #1d2230; --text-dim: #51596d; --text-faint: #6b7186;
+  --heading: #11141d;
+  --accent: #5d4ce0; --accent-hi: #4a3bc7; --accent-soft: rgba(93,76,224,.10); --accent-line: rgba(93,76,224,.26);
+  --teal: #0a7064; --green: #137044; --green-soft: rgba(19,112,68,.12);
+  --gold: #946105; --gold-soft: rgba(148,97,5,.12);
+  --red: #c0392b; --red-soft: rgba(192,57,43,.10); --red-line: rgba(192,57,43,.32);
+  --on-accent: #ffffff;
+  --card-shadow: 0 18px 40px -24px rgba(29,34,48,.32);
+  --nav-bg: rgba(244,242,238,.82);
+  --grid-line: rgba(29,34,48,.10);
+  --track: #e7e2d8;
+}
+:root[data-theme="dark"] {
+  --bg: #0a0c12; --bg-soft: #0e1119; --bg-card: #131825; --bg-elev: #1a2031;
+  --border: #20263a; --border-soft: #2d3550; --border-hi: #3a4467;
+  --text: #f1f3f9; --text-dim: #a3acc2; --text-faint: #8b93ab;
+  --heading: #ffffff;
+  --accent: #7c6cff; --accent-hi: #a497ff; --accent-soft: rgba(124,108,255,.12); --accent-line: rgba(124,108,255,.24);
+  --teal: #32e0c8; --green: #3ddc97; --green-soft: rgba(61,220,151,.12);
+  --gold: #ffd66b; --gold-soft: rgba(255,214,107,.12);
+  --red: #ff6b5e; --red-soft: rgba(255,107,94,.12); --red-line: rgba(255,107,94,.34);
+  --on-accent: #ffffff;
+  --card-shadow: 0 30px 56px -28px rgba(0,0,0,.9);
+  --nav-bg: rgba(10,12,18,.7);
+  --grid-line: rgba(241,243,249,.09);
+  --track: #1c2334;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body {
+  font-family: var(--sans);
+  background: var(--bg); color: var(--text);
+  line-height: 1.6; -webkit-font-smoothing: antialiased; overflow-x: hidden;
+}
+h1,h2,h3 { font-family: var(--display); color: var(--heading); line-height: 1.15; letter-spacing: -.01em; }
+a { color: inherit; }
+.wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 22px; }
+.mono { font-family: var(--mono); }
+
+/* ---------- Top bar ---------- */
+.topbar {
+  position: sticky; top: 0; z-index: 50;
+  background: var(--nav-bg); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--border);
+}
+.topbar-inner { max-width: var(--maxw); margin: 0 auto; padding: 11px 22px; display: flex; align-items: center; gap: 14px; }
+.back-link { display: inline-flex; align-items: center; gap: 7px; font-weight: 600; font-size: 14px; text-decoration: none; color: var(--text-dim); transition: color .2s; }
+.back-link:hover { color: var(--accent); }
+.topbar-title { font-family: var(--display); font-weight: 600; font-size: 14px; color: var(--heading); margin-left: 2px; }
+.topbar-spacer { flex: 1; }
+.topbar-link { font-size: 13px; font-weight: 600; text-decoration: none; color: var(--text-dim); display: inline-flex; align-items: center; gap: 6px; transition: color .2s; }
+.topbar-link:hover { color: var(--accent); }
+.theme-toggle { display: inline-grid; place-items: center; width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text-dim); cursor: pointer; transition: all .2s; }
+.theme-toggle:hover { color: var(--accent); border-color: var(--accent-line); }
+.theme-icon-moon { display: none; }
+:root[data-theme="dark"] .theme-icon-sun { display: none; }
+:root[data-theme="dark"] .theme-icon-moon { display: block; }
+@media (max-width: 640px) { .topbar-title, .topbar-link span { display: none; } }
+
+/* ---------- Hero ---------- */
+.hero { position: relative; padding: 64px 0 40px; overflow: hidden; }
+.hero::before {
+  content: ''; position: absolute; inset: 0; z-index: -1;
+  background: radial-gradient(60% 70% at 18% 0%, var(--accent-soft), transparent 70%),
+              radial-gradient(50% 60% at 95% 10%, var(--green-soft), transparent 70%);
+}
+.eyebrow {
+  display: inline-flex; align-items: center; gap: 8px; font-family: var(--mono);
+  font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--accent); background: var(--accent-soft); border: 1px solid var(--accent-line);
+  padding: 5px 12px; border-radius: 999px;
+}
+.eyebrow .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 0 var(--green); animation: ping 2.2s infinite; }
+@keyframes ping { 0% { box-shadow: 0 0 0 0 var(--green-soft); } 70% { box-shadow: 0 0 0 9px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
+@media (prefers-reduced-motion: reduce) { .eyebrow .dot { animation: none; } }
+.hero h1 { font-size: clamp(28px, 4.6vw, 50px); font-weight: 700; margin: 18px 0 14px; max-width: 17ch; }
+.hero h1 .grad { background: linear-gradient(100deg, var(--accent), var(--teal)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.hero-lead { font-size: clamp(15px, 1.7vw, 18px); color: var(--text-dim); max-width: 64ch; }
+.hero-lead strong { color: var(--text); font-weight: 600; }
+.hero-actions { display: flex; flex-wrap: wrap; gap: 11px; margin-top: 26px; }
+.btn { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; font-size: 14px; text-decoration: none; padding: 11px 18px; border-radius: 12px; cursor: pointer; border: 1px solid transparent; transition: transform .15s var(--ease), box-shadow .2s, background .2s; }
+.btn-primary { background: var(--accent); color: var(--on-accent); box-shadow: 0 10px 24px -12px var(--accent); }
+.btn-primary:hover { transform: translateY(-2px); }
+.btn-ghost { background: var(--bg-card); color: var(--text); border-color: var(--border); }
+.btn-ghost:hover { border-color: var(--accent-line); color: var(--accent); }
+
+/* ---------- Stat chips ---------- */
+.chips { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 34px; }
+.chip { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px 16px; }
+.chip .v { font-family: var(--mono); font-size: 22px; font-weight: 700; color: var(--heading); }
+.chip .v .u { font-size: 13px; color: var(--text-faint); font-weight: 500; }
+.chip .l { font-size: 11px; color: var(--text-faint); text-transform: uppercase; letter-spacing: .06em; margin-top: 3px; font-weight: 600; }
+.chip.good .v { color: var(--green); }
+
+/* ---------- Sections ---------- */
+section.block { padding: 46px 0; border-top: 1px solid var(--border); }
+.sec-eyebrow { font-family: var(--mono); font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
+.sec-title { font-size: clamp(22px, 3vw, 30px); font-weight: 700; margin: 9px 0 10px; }
+.sec-lead { color: var(--text-dim); max-width: 70ch; font-size: 15.5px; }
+.sec-lead strong { color: var(--text); font-weight: 600; }
+
+.card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--card-shadow); }
+.pad { padding: 22px; }
+
+/* ---------- Video + live readout ---------- */
+.player-grid { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); gap: 18px; margin-top: 22px; }
+@media (max-width: 880px) { .player-grid { grid-template-columns: 1fr; } }
+.video-card { position: relative; overflow: hidden; padding: 0; }
+.video-card video { width: 100%; display: block; background: #000; aspect-ratio: 16/9; object-fit: cover; }
+.video-tag { position: absolute; top: 10px; left: 10px; font-family: var(--mono); font-size: 11px; padding: 4px 9px; border-radius: 8px; background: rgba(0,0,0,.62); color: #fff; backdrop-filter: blur(4px); }
+.readout { display: flex; flex-direction: column; gap: 14px; }
+.readout-now { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.readout-now .t { font-family: var(--mono); font-size: 30px; font-weight: 700; color: var(--heading); }
+.readout-now .seg { font-family: var(--mono); font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
+.readout-frame { position: relative; border-radius: var(--radius-sm); overflow: hidden; border: 1px solid var(--border); background: var(--bg-elev); }
+.readout-frame img { width: 100%; display: block; aspect-ratio: 16/9; object-fit: cover; }
+.readout-frame .cap { position: absolute; bottom: 0; left: 0; right: 0; font-family: var(--mono); font-size: 11px; padding: 5px 9px; background: linear-gradient(transparent, rgba(0,0,0,.78)); color: #fff; display: flex; justify-content: space-between; }
+.readout-hint { font-size: 12px; color: var(--text-faint); }
+.readout-metric { display: flex; gap: 8px; }
+.readout-metric .m { flex: 1; background: var(--bg-elev); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 9px 11px; }
+.readout-metric .m .mv { font-family: var(--mono); font-weight: 700; font-size: 17px; color: var(--heading); }
+.readout-metric .m .ml { font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-faint); font-weight: 600; }
+
+/* ---------- Segment timeline bar ---------- */
+.timeline { margin-top: 18px; }
+.timeline-label { font-size: 11px; color: var(--text-faint); text-transform: uppercase; letter-spacing: .06em; font-weight: 600; margin-bottom: 7px; display: flex; justify-content: space-between; }
+.tbar { display: flex; gap: 3px; height: 38px; }
+.tseg { position: relative; border-radius: 7px; cursor: pointer; overflow: hidden; border: 1px solid transparent; transition: filter .15s, border-color .15s; display: flex; align-items: center; justify-content: center; }
+.tseg:hover { filter: brightness(1.06); }
+.tseg.active { border-color: var(--heading); box-shadow: 0 0 0 2px var(--bg) inset; }
+.tseg .tl { font-family: var(--mono); font-size: 10px; font-weight: 700; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.5); pointer-events: none; }
+.tseg .tn { position: absolute; bottom: 2px; left: 0; right: 0; text-align: center; font-family: var(--mono); font-size: 8px; color: rgba(255,255,255,.85); pointer-events: none; }
+.tbar-axis { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 10px; color: var(--text-faint); margin-top: 5px; }
+
+/* ---------- Insight: reliable vs spurious ---------- */
+.insight-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 22px; }
+@media (max-width: 880px) { .insight-grid { grid-template-columns: 1fr; } }
+.insight-col h3 { font-size: 15px; display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.insight-col .colnote { font-size: 12.5px; color: var(--text-dim); margin-bottom: 14px; }
+.tag-pill { font-family: var(--mono); font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 999px; letter-spacing: .04em; }
+.tag-ok { background: var(--green-soft); color: var(--green); }
+.tag-bad { background: var(--red-soft); color: var(--red); }
+.crow { display: grid; grid-template-columns: 96px 1fr auto; align-items: center; gap: 11px; padding: 7px 0; }
+.crow + .crow { border-top: 1px solid var(--border); }
+.crow .cname { display: flex; align-items: center; gap: 7px; font-weight: 600; font-size: 13.5px; text-transform: capitalize; }
+.crow .sw { width: 11px; height: 11px; border-radius: 3px; flex: none; }
+.confbar { height: 9px; border-radius: 999px; background: var(--track); overflow: hidden; position: relative; }
+.confbar > i { display: block; height: 100%; border-radius: 999px; }
+.crow .cmeta { font-family: var(--mono); font-size: 12px; color: var(--text-dim); text-align: right; min-width: 96px; }
+.crow .cmeta b { color: var(--heading); }
+.callout { margin-top: 14px; padding: 13px 15px; border-radius: var(--radius-sm); border: 1px solid var(--gold-soft); background: var(--gold-soft); font-size: 13px; color: var(--text); }
+.callout b { color: var(--gold); }
+
+/* proportion bar */
+.propbar-wrap { margin-top: 22px; }
+.propbar { display: flex; height: 30px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); }
+.propbar > span { display: block; height: 100%; position: relative; transition: filter .15s; }
+.propbar > span:hover { filter: brightness(1.12); }
+.proplegend { display: flex; flex-wrap: wrap; gap: 5px 14px; margin-top: 11px; font-size: 12px; color: var(--text-dim); }
+.proplegend .li { display: inline-flex; align-items: center; gap: 6px; }
+.proplegend .sw { width: 10px; height: 10px; border-radius: 3px; }
+
+/* ---------- Charts (SVG) ---------- */
+.chart-card { margin-top: 22px; }
+.chart-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 6px; }
+.chart-head h3 { font-size: 16px; }
+.chart-head .hint { font-size: 12px; color: var(--text-faint); }
+svg.chart { width: 100%; height: auto; display: block; overflow: visible; }
+svg text { font-family: var(--mono); fill: var(--text-faint); }
+.axis-line { stroke: var(--grid-line); stroke-width: 1; }
+.tooltip { position: fixed; z-index: 80; pointer-events: none; background: var(--bg-card); border: 1px solid var(--border-hi); border-radius: 9px; box-shadow: var(--card-shadow); padding: 8px 11px; font-size: 12px; opacity: 0; transition: opacity .12s; max-width: 240px; }
+.tooltip .tt-t { font-family: var(--mono); font-weight: 700; color: var(--heading); }
+.tooltip .tt-s { color: var(--text-dim); }
+
+/* two-up grid for coverage + activity */
+.two-up { display: grid; grid-template-columns: 320px 1fr; gap: 18px; margin-top: 22px; align-items: stretch; }
+@media (max-width: 820px) { .two-up { grid-template-columns: 1fr; } }
+.donut-card { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+.donut-card .dnum { font-family: var(--mono); font-size: 15px; color: var(--text-dim); margin-top: 6px; }
+.donut-card .dnum b { color: var(--heading); font-size: 17px; }
+
+/* ---------- Frame gallery ---------- */
+.gal-seg { margin-top: 18px; }
+.gal-seg-h { display: flex; align-items: center; gap: 9px; margin-bottom: 9px; }
+.gal-seg-h .badge { font-family: var(--mono); font-size: 11px; font-weight: 700; color: #fff; padding: 2px 9px; border-radius: 6px; }
+.gal-seg-h .lab { font-size: 13px; color: var(--text-dim); }
+.gal-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 9px; }
+@media (max-width: 720px) { .gal-row { grid-template-columns: repeat(2, 1fr); } }
+.frame { position: relative; border-radius: 9px; overflow: hidden; border: 1px solid var(--border); cursor: pointer; background: var(--bg-elev); transition: transform .15s var(--ease), box-shadow .2s, border-color .2s; }
+.frame:hover { transform: translateY(-3px); box-shadow: var(--card-shadow); border-color: var(--accent-line); }
+.frame img { width: 100%; display: block; aspect-ratio: 16/9; object-fit: cover; }
+.frame .fcap { position: absolute; bottom: 0; left: 0; right: 0; display: flex; justify-content: space-between; font-family: var(--mono); font-size: 9.5px; padding: 3px 6px; background: linear-gradient(transparent, rgba(0,0,0,.8)); color: #fff; }
+
+/* ---------- Pipeline / methods ---------- */
+.pipe { display: flex; flex-wrap: wrap; align-items: stretch; gap: 0; margin-top: 22px; }
+.pipe .step { flex: 1; min-width: 150px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px 15px; position: relative; }
+.pipe .step .si { font-family: var(--mono); font-size: 11px; color: var(--accent); font-weight: 700; }
+.pipe .step h4 { font-family: var(--display); font-size: 14px; margin: 5px 0 4px; color: var(--heading); }
+.pipe .step p { font-size: 12.5px; color: var(--text-dim); line-height: 1.5; }
+.pipe .arrow { display: grid; place-items: center; padding: 0 6px; color: var(--text-faint); flex: none; }
+@media (max-width: 760px) { .pipe { flex-direction: column; } .pipe .arrow { transform: rotate(90deg); padding: 6px 0; } }
+.stack { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+.stack span { font-family: var(--mono); font-size: 12px; padding: 5px 11px; border-radius: 999px; background: var(--bg-elev); border: 1px solid var(--border); color: var(--text-dim); }
+
+/* ---------- Limitations ---------- */
+.limits { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; margin-top: 22px; }
+@media (max-width: 760px) { .limits { grid-template-columns: 1fr; } }
+.limit { background: var(--bg-card); border: 1px solid var(--border); border-left: 3px solid var(--red-line); border-radius: var(--radius-sm); padding: 14px 16px; }
+.limit h4 { font-family: var(--display); font-size: 14px; color: var(--heading); margin-bottom: 4px; }
+.limit p { font-size: 13px; color: var(--text-dim); }
+
+/* ---------- Footer ---------- */
+footer { border-top: 1px solid var(--border); padding: 30px 0 50px; margin-top: 30px; }
+.foot-inner { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; justify-content: space-between; }
+.foot-inner a { color: var(--text-dim); text-decoration: none; font-size: 13.5px; font-weight: 600; transition: color .2s; }
+.foot-inner a:hover { color: var(--accent); }
+.foot-copy { font-size: 12.5px; color: var(--text-faint); }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0; }
+</style>
+</head>
+<body>
+
+<!-- ===== Top bar ===== -->
+<div class="topbar">
+  <div class="topbar-inner">
+    <a class="back-link" href="../../">
+      <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      Portfolio
+    </a>
+    <span class="topbar-title">Traffic Vision</span>
+    <span class="topbar-spacer"></span>
+    <a class="topbar-link" href="https://github.com/sugeerth/video-story-analyzer" target="_blank" rel="noopener">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M12 .5C5.37.5 0 5.87 0 12.5c0 5.3 3.44 9.8 8.21 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.75.08-.73.08-.73 1.21.09 1.84 1.24 1.84 1.24 1.07 1.84 2.81 1.31 3.5 1 .11-.78.42-1.31.76-1.61-2.67-.3-5.47-1.34-5.47-5.96 0-1.32.47-2.39 1.24-3.23-.13-.3-.54-1.53.12-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 6.01 0c2.29-1.55 3.3-1.23 3.3-1.23.66 1.65.25 2.88.12 3.18.77.84 1.24 1.91 1.24 3.23 0 4.63-2.81 5.65-5.49 5.95.43.37.82 1.1.82 2.22v3.29c0 .32.22.7.83.58A12.01 12.01 0 0 0 24 12.5C24 5.87 18.63.5 12 .5Z"/></svg>
+      <span>Code</span>
+    </a>
+    <button class="theme-toggle" id="themeToggle" type="button" aria-label="Switch theme" title="Switch theme">
+      <svg class="theme-icon-sun" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 1.8v3M12 19.2v3M3.3 3.3l2.1 2.1M18.6 18.6l2.1 2.1M1.8 12h3M19.2 12h3M3.3 20.7l2.1-2.1M18.6 5.4l2.1-2.1"/></svg>
+      <svg class="theme-icon-moon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 14.3A8.5 8.5 0 1 1 9.7 3.5a6.6 6.6 0 0 0 10.8 10.8Z"/></svg>
+    </button>
+  </div>
+</div>
+
+<!-- ===== Hero ===== -->
+<header class="hero">
+  <div class="wrap">
+    <span class="eyebrow"><span class="dot"></span> Computer Vision · Open-source · Runs locally</span>
+    <h1>What does an off-the-shelf object detector <span class="grad">actually see</span> in 60 seconds of traffic?</h1>
+    <p class="hero-lead">
+      I ran <strong>Faster R-CNN (ResNet-50-FPN)</strong> — a standard, COCO-pretrained, fully open-source
+      detector — over every sampled frame of a 60-second 4K traffic clip. No fine-tuning, no cloud API,
+      no labels. <strong>5,136 detections</strong> later, here's everything it found — the things it nails,
+      and the handful it gets <strong>confidently wrong</strong>. Press play, scrub the timeline, and inspect
+      the real annotated frames.
+    </p>
+    <div class="hero-actions">
+      <a href="#watch" class="btn btn-primary">
+        Watch it run
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+      </a>
+      <a href="#insight" class="btn btn-ghost">The honest part →</a>
+      <a href="#how" class="btn btn-ghost">How it works</a>
+    </div>
+
+    <div class="chips">
+      <div class="chip"><div class="v">225</div><div class="l">Frames analyzed</div></div>
+      <div class="chip"><div class="v">5,136</div><div class="l">Total detections</div></div>
+      <div class="chip"><div class="v">18<span class="u"> / 80</span></div><div class="l">COCO classes seen</div></div>
+      <div class="chip"><div class="v">0.40</div><div class="l">Confidence threshold</div></div>
+      <div class="chip good"><div class="v">$0</div><div class="l">100% local · no API</div></div>
+    </div>
+  </div>
+</header>
+
+<!-- ===== Watch / video ===== -->
+<section class="block" id="watch">
+  <div class="wrap">
+    <p class="sec-eyebrow">The clip</p>
+    <h2 class="sec-title">Play it, or jump to any segment</h2>
+    <p class="sec-lead">
+      The detector ran frame-by-frame. As the video plays, the panel on the right shows the
+      <strong>nearest analyzed frame</strong> with the model's real bounding boxes and confidence
+      scores. Click any segment on the timeline to jump there.
+    </p>
+
+    <div class="player-grid">
+      <div class="card video-card">
+        <video id="vid" controls muted playsinline preload="none" poster="assets/poster.jpg">
+          <source src="assets/traffic.mp4" type="video/mp4" />
+        </video>
+        <span class="video-tag mono">640×360 · 60s · 30fps</span>
+      </div>
+
+      <div class="readout">
+        <div class="card pad">
+          <div class="readout-now">
+            <span class="t" id="ro-time">0.0s</span>
+            <span class="seg" id="ro-seg">Segment 1</span>
+          </div>
+          <div class="readout-metric" style="margin:12px 0">
+            <div class="m"><div class="mv" id="ro-perframe">16.5</div><div class="ml">obj / frame here</div></div>
+            <div class="m"><div class="mv" id="ro-dets">661</div><div class="ml">detections in segment</div></div>
+          </div>
+          <div class="readout-frame">
+            <img id="ro-frame" src="assets/frames/seg0_f0.jpg" alt="Nearest analyzed frame with detection boxes" />
+            <div class="cap mono"><span id="ro-frame-t">0.0s</span><span id="ro-frame-n">11 objects</span></div>
+          </div>
+          <p class="readout-hint" style="margin-top:9px">Real frame from the detector — every box and % is its own output.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="timeline">
+      <div class="timeline-label"><span>Activity timeline — width ∝ duration · color ∝ objects/frame</span><span id="tl-busiest"></span></div>
+      <div class="tbar" id="tbar" role="group" aria-label="Video segments"></div>
+      <div class="tbar-axis"><span>0:00</span><span>0:15</span><span>0:30</span><span>0:45</span><span>1:00</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== The honest part: reliable vs spurious ===== -->
+<section class="block" id="insight">
+  <div class="wrap">
+    <p class="sec-eyebrow">The honest part</p>
+    <h2 class="sec-title">Confident and right — and sometimes confidently wrong</h2>
+    <p class="sec-lead">
+      On road scenes the model is exactly what you'd hope: <strong>cars, trucks, people and buses</strong>
+      dominate, at high confidence. But it can only name the <strong>80 things COCO taught it</strong> — so
+      when it meets something out-of-distribution, it reaches for the closest label it knows. The result is a
+      set of <strong>plausible-looking false positives</strong>: a long articulated bus read as a
+      <em>"train,"</em> windshield glare as a <em>"cup,"</em> lane markings as <em>"ties"</em> or
+      <em>"scissors."</em> This is the everyday reality of shipping an off-the-shelf detector.
+    </p>
+
+    <div class="insight-grid">
+      <div class="card pad insight-col">
+        <h3><span class="tag-pill tag-ok">EXPECTED ON A ROAD</span></h3>
+        <p class="colnote">The classes a traffic scene should contain — and the model's bread and butter.</p>
+        <div id="rel-rows"></div>
+      </div>
+      <div class="card pad insight-col">
+        <h3><span class="tag-pill tag-bad">OUT-OF-DOMAIN FALSE POSITIVES</span></h3>
+        <p class="colnote">No trains, cups or scissors are on this road. These are the model guessing.</p>
+        <div id="spur-rows"></div>
+        <div class="callout">
+          <b>Confidence ≠ correctness.</b> "scissors" scores a 64% average — higher than several
+          <em>correct</em> classes — yet there isn't a pair of scissors in the whole clip. A high score
+          means the model is sure, not that it's right.
+        </div>
+      </div>
+    </div>
+
+    <div class="propbar-wrap">
+      <div class="chart-head"><h3>Where all 5,136 detections went</h3><span class="hint">car alone is ~70% of everything detected</span></div>
+      <div class="propbar" id="propbar"></div>
+      <div class="proplegend" id="proplegend"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== Coverage + activity over time ===== -->
+<section class="block">
+  <div class="wrap">
+    <p class="sec-eyebrow">By the numbers</p>
+    <h2 class="sec-title">Coverage and activity</h2>
+    <p class="sec-lead">Of COCO's 80 classes the model could name, only 18 ever showed up. And the scene
+      gets steadily busier toward the middle — here's the object count across the sampled frames.</p>
+
+    <div class="two-up">
+      <div class="card pad donut-card">
+        <svg class="chart" id="donut" viewBox="0 0 220 220" width="220" height="220" role="img" aria-label="18 of 80 COCO classes detected"></svg>
+        <div class="dnum"><b>18</b> of 80 COCO classes appeared</div>
+        <div class="dnum" style="font-size:12px">62 classes were never seen in this clip</div>
+      </div>
+      <div class="card pad">
+        <div class="chart-head"><h3>Objects detected per frame</h3><span class="hint">40 sampled keyframes · hover for detail · click to jump</span></div>
+        <svg class="chart" id="activity" viewBox="0 0 760 280" role="img" aria-label="Objects detected per frame over time"></svg>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== Class flow over time ===== -->
+<section class="block">
+  <div class="wrap">
+    <p class="sec-eyebrow">Object flow</p>
+    <h2 class="sec-title">How the mix of objects shifts across the video</h2>
+    <p class="sec-lead">Each band is one class; its thickness is that class's share of detections in that
+      segment. Cars stay dominant throughout, while trucks, buses and people ebb and flow — and the spurious
+      classes flicker in and out. Hover a band to trace one class; click a segment to jump the video there.</p>
+    <div class="card pad chart-card">
+      <svg class="chart" id="flow" viewBox="0 0 760 360" role="img" aria-label="Stacked share of each object class across the eight segments"></svg>
+      <div class="proplegend" id="flowlegend" style="margin-top:14px"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== Frame gallery ===== -->
+<section class="block">
+  <div class="wrap">
+    <p class="sec-eyebrow">The evidence</p>
+    <h2 class="sec-title">Every keyframe the model actually saw</h2>
+    <p class="sec-lead">40 real frames pulled straight from the detector, boxes and confidence scores
+      drawn by the model itself. Click any frame to jump the video to that moment.</p>
+    <div id="gallery"></div>
+  </div>
+</section>
+
+<!-- ===== How it works ===== -->
+<section class="block" id="how">
+  <div class="wrap">
+    <p class="sec-eyebrow">Under the hood</p>
+    <h2 class="sec-title">A small, honest, fully open-source pipeline</h2>
+    <p class="sec-lead">No magic and no proprietary models — five steps, all running on a laptop CPU/GPU.</p>
+    <div class="pipe">
+      <div class="step"><div class="si">01</div><h4>Decode &amp; sample</h4><p>OpenCV reads the clip and samples every Nth frame — 225 frames from the 60s clip.</p></div>
+      <div class="arrow"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg></div>
+      <div class="step"><div class="si">02</div><h4>Detect</h4><p>Each frame runs through torchvision's Faster R-CNN (ResNet-50-FPN), COCO-pretrained.</p></div>
+      <div class="arrow"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg></div>
+      <div class="step"><div class="si">03</div><h4>Threshold</h4><p>Keep boxes scoring ≥ 0.40 confidence; draw them back onto the frame with labels.</p></div>
+      <div class="arrow"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg></div>
+      <div class="step"><div class="si">04</div><h4>Segment</h4><p>Split the timeline into 8 windows of roughly equal detection "mass" — busy stretches get shorter windows.</p></div>
+      <div class="arrow"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg></div>
+      <div class="step"><div class="si">05</div><h4>Aggregate &amp; visualize</h4><p>Tally counts and confidence per class and segment, then render this page.</p></div>
+    </div>
+    <div class="stack">
+      <span>Python 3.10+</span><span>PyTorch</span><span>torchvision · Faster R-CNN</span><span>OpenCV</span><span>Pillow</span><span>NumPy</span><span>vanilla HTML / CSS / SVG</span>
+    </div>
+  </div>
+</section>
+
+<!-- ===== Limitations ===== -->
+<section class="block">
+  <div class="wrap">
+    <p class="sec-eyebrow">Keeping it honest</p>
+    <h2 class="sec-title">What this demo is — and isn't</h2>
+    <p class="sec-lead">A clear-eyed read on the model matters more than an impressive-looking number.</p>
+    <div class="limits">
+      <div class="limit"><h4>No accuracy / F1 number</h4><p>There are no ground-truth labels for this clip, so precision, recall and F1 are genuinely unmeasurable here. I won't print a metric I can't compute — "plausible vs. spurious" below is an honest human read, not a benchmark.</p></div>
+      <div class="limit"><h4>COCO vocabulary only</h4><p>The model can only ever say one of 80 words. Anything outside that — a tram, a scooter, road debris — gets forced into the nearest known class or missed entirely.</p></div>
+      <div class="limit"><h4>Off-the-shelf, no fine-tuning</h4><p>These are stock pretrained weights. A few hours fine-tuning on traffic footage would kill most of the false positives — that's the point this demo makes.</p></div>
+      <div class="limit"><h4>One short clip</h4><p>60 seconds, daytime, one fixed camera. Conclusions about the model's behavior generalize; these exact counts don't.</p></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap foot-inner">
+    <div style="display:flex;gap:18px;flex-wrap:wrap">
+      <a href="../../">← Back to portfolio</a>
+      <a href="https://github.com/sugeerth/video-story-analyzer" target="_blank" rel="noopener">Source code</a>
+      <a href="https://sugeerth.github.io/" target="_blank" rel="noopener">Research homepage</a>
+    </div>
+    <p class="foot-copy">Faster R-CNN (ResNet-50-FPN), COCO-pretrained · open-source · built with vanilla HTML, CSS &amp; SVG — no build step.</p>
+  </div>
+</footer>
+
+<div class="tooltip" id="tooltip"><span class="tt-t" id="tt-t"></span><br><span class="tt-s" id="tt-s"></span></div>
+
+<script>
+'use strict';
+
+/* ============================================================
+   Real data — extracted verbatim from the pipeline's own output
+   (per-segment counts come from its Sankey; per-frame counts and
+   per-class confidence from its detection log). Nothing invented.
+   ============================================================ */
+var CLASS_COLOR = {
+  car:'#2979FF', truck:'#00C853', person:'#FF6D00', bus:'#D50000', train:'#AA00FF',
+  cup:'#00BFA5', tie:'#DD2C00', scissors:'#6D4C41', airplane:'#546E7A',
+  motorcycle:'#C6FF00', other:'#9aa3b2'
+};
+
+// Classes shown in the insight panel: total detections + avg confidence + reliability
+var CLASSES = [
+  { name:'car',        total:3614, conf:0.80, reliable:true  },
+  { name:'truck',      total:516,  conf:0.64, reliable:true  },
+  { name:'person',     total:355,  conf:0.59, reliable:true  },
+  { name:'bus',        total:188,  conf:0.64, reliable:true  },
+  { name:'motorcycle', total:27,   conf:0.72, reliable:true  },
+  { name:'train',      total:147,  conf:0.51, reliable:false },
+  { name:'cup',        total:124,  conf:0.48, reliable:false },
+  { name:'tie',        total:61,   conf:0.54, reliable:false },
+  { name:'scissors',   total:49,   conf:0.64, reliable:false },
+  { name:'airplane',   total:37,   conf:0.49, reliable:false }
+];
+var TOTAL_DETS = 5136;
+
+// 8 adaptive segments
+var SEGMENTS = [
+  { t0:0.0,   t1:10.67, dets:661, classes:10, perFrame:16.5, label:'Steady' },
+  { t0:10.67, t1:22.13, dets:651, classes:12, perFrame:15.1, label:'Steady' },
+  { t0:22.13, t1:31.2,  dets:648, classes:10, perFrame:19.1, label:'Building' },
+  { t0:31.2,  t1:38.13, dets:649, classes:10, perFrame:25.0, label:'Building' },
+  { t0:38.13, t1:44.0,  dets:645, classes:8,  perFrame:29.3, label:'Peak' },
+  { t0:44.0,  t1:49.33, dets:654, classes:11, perFrame:32.7, label:'Peak · busiest' },
+  { t0:49.33, t1:54.67, dets:640, classes:8,  perFrame:32.0, label:'Peak' },
+  { t0:54.67, t1:60.0,  dets:588, classes:10, perFrame:29.4, label:'Easing' }
+];
+
+// Per-segment class counts (exact, from the pipeline's Sankey labels)
+var SEG_CLASSES = [
+  { car:513, truck:28,  person:15, bus:7,  train:46, cup:11, tie:16, scissors:11, airplane:13, other:1 },
+  { car:404, truck:62,  person:39, bus:8,  train:64, cup:33, tie:11, scissors:4,  airplane:22, other:4 },
+  { car:420, truck:106, person:26, bus:35, train:29, cup:24, tie:2,  scissors:3,  airplane:2,  other:1 },
+  { car:415, truck:99,  person:44, bus:51, cup:13, tie:1, scissors:13, motorcycle:10, other:3 },
+  { car:493, truck:58,  person:43, bus:31, cup:13, tie:2, scissors:4,  other:1 },
+  { car:454, truck:45,  person:81, bus:26, train:5, cup:8, tie:12, scissors:1, motorcycle:17, other:5 },
+  { car:483, truck:61,  person:63, bus:9,  cup:13, tie:4, scissors:6, other:1 },
+  { car:432, truck:57,  person:44, bus:21, train:3, cup:9, tie:13, scissors:7, other:2 }
+];
+
+// 40 sampled keyframes — real per-frame object counts + annotated image
+var FRAMES = [
+  {s:0,t:0.0,n:11,f:'assets/frames/seg0_f0.jpg'},{s:0,t:2.4,n:17,f:'assets/frames/seg0_f1.jpg'},{s:0,t:5.1,n:14,f:'assets/frames/seg0_f2.jpg'},{s:0,t:7.7,n:19,f:'assets/frames/seg0_f3.jpg'},{s:0,t:10.4,n:17,f:'assets/frames/seg0_f4.jpg'},
+  {s:1,t:10.7,n:17,f:'assets/frames/seg1_f0.jpg'},{s:1,t:13.3,n:10,f:'assets/frames/seg1_f1.jpg'},{s:1,t:16.3,n:15,f:'assets/frames/seg1_f2.jpg'},{s:1,t:18.9,n:14,f:'assets/frames/seg1_f3.jpg'},{s:1,t:21.9,n:17,f:'assets/frames/seg1_f4.jpg'},
+  {s:2,t:22.1,n:13,f:'assets/frames/seg2_f0.jpg'},{s:2,t:24.3,n:20,f:'assets/frames/seg2_f1.jpg'},{s:2,t:26.4,n:19,f:'assets/frames/seg2_f2.jpg'},{s:2,t:28.5,n:22,f:'assets/frames/seg2_f3.jpg'},{s:2,t:30.9,n:22,f:'assets/frames/seg2_f4.jpg'},
+  {s:3,t:31.2,n:17,f:'assets/frames/seg3_f0.jpg'},{s:3,t:32.8,n:23,f:'assets/frames/seg3_f1.jpg'},{s:3,t:34.4,n:25,f:'assets/frames/seg3_f2.jpg'},{s:3,t:36.0,n:26,f:'assets/frames/seg3_f3.jpg'},{s:3,t:37.9,n:31,f:'assets/frames/seg3_f4.jpg'},
+  {s:4,t:38.1,n:27,f:'assets/frames/seg4_f0.jpg'},{s:4,t:39.5,n:38,f:'assets/frames/seg4_f1.jpg'},{s:4,t:40.8,n:33,f:'assets/frames/seg4_f2.jpg'},{s:4,t:42.1,n:33,f:'assets/frames/seg4_f3.jpg'},{s:4,t:43.7,n:24,f:'assets/frames/seg4_f4.jpg'},
+  {s:5,t:44.0,n:29,f:'assets/frames/seg5_f0.jpg'},{s:5,t:45.1,n:29,f:'assets/frames/seg5_f1.jpg'},{s:5,t:46.4,n:36,f:'assets/frames/seg5_f2.jpg'},{s:5,t:47.7,n:33,f:'assets/frames/seg5_f3.jpg'},{s:5,t:49.1,n:33,f:'assets/frames/seg5_f4.jpg'},
+  {s:6,t:49.3,n:34,f:'assets/frames/seg6_f0.jpg'},{s:6,t:50.4,n:28,f:'assets/frames/seg6_f1.jpg'},{s:6,t:51.7,n:36,f:'assets/frames/seg6_f2.jpg'},{s:6,t:53.1,n:30,f:'assets/frames/seg6_f3.jpg'},{s:6,t:54.4,n:29,f:'assets/frames/seg6_f4.jpg'},
+  {s:7,t:54.7,n:31,f:'assets/frames/seg7_f0.jpg'},{s:7,t:55.7,n:34,f:'assets/frames/seg7_f1.jpg'},{s:7,t:57.1,n:26,f:'assets/frames/seg7_f2.jpg'},{s:7,t:58.4,n:27,f:'assets/frames/seg7_f3.jpg'},{s:7,t:59.7,n:29,f:'assets/frames/seg7_f4.jpg'}
+];
+var DURATION = 60.0;
+
+/* ---------- small helpers ---------- */
+function $(id){ return document.getElementById(id); }
+function el(tag, attrs){ var e=document.createElementNS('http://www.w3.org/2000/svg', tag); if(attrs){ for(var k in attrs) e.setAttribute(k, attrs[k]); } return e; }
+function fmtTime(sec){ var m=Math.floor(sec/60), s=Math.floor(sec%60); return m+':' + (s<10?'0':'') + s; }
+function pct(x){ return Math.round(x*100); }
+
+var vid = $('vid');
+
+/* ============================================================
+   Insight rows (reliable vs spurious)
+   ============================================================ */
+function renderInsight(){
+  function row(c){
+    var swatch = '<span class="sw" style="background:'+CLASS_COLOR[c.name]+'"></span>';
+    var barColor = c.reliable ? 'var(--green)' : 'var(--red)';
+    return '<div class="crow">'
+      + '<div class="cname">'+swatch+c.name+'</div>'
+      + '<div class="confbar"><i style="width:'+pct(c.conf)+'%;background:'+barColor+'"></i></div>'
+      + '<div class="cmeta"><b>'+c.total.toLocaleString()+'</b> · '+pct(c.conf)+'% conf</div>'
+      + '</div>';
+  }
+  $('rel-rows').innerHTML  = CLASSES.filter(function(c){return c.reliable;}).map(row).join('');
+  $('spur-rows').innerHTML = CLASSES.filter(function(c){return !c.reliable;}).map(row).join('');
+}
+
+/* ============================================================
+   Proportion bar — share of all 5,136 detections
+   ============================================================ */
+function renderPropbar(){
+  var named = CLASSES.slice().sort(function(a,b){return b.total-a.total;});
+  var sumNamed = named.reduce(function(s,c){return s+c.total;},0);
+  var other = TOTAL_DETS - sumNamed;          // detections in the long tail of classes
+  var parts = named.map(function(c){ return {name:c.name, total:c.total}; });
+  if(other>0) parts.push({name:'other', total:other});
+
+  var bar = $('propbar'), leg = $('proplegend');
+  bar.innerHTML=''; leg.innerHTML='';
+  parts.forEach(function(p){
+    var span = document.createElement('span');
+    span.style.width = (p.total/TOTAL_DETS*100)+'%';
+    span.style.background = CLASS_COLOR[p.name] || CLASS_COLOR.other;
+    span.setAttribute('data-tip', p.name+': '+p.total.toLocaleString()+' ('+(p.total/TOTAL_DETS*100).toFixed(1)+'%)');
+    attachTip(span);
+    bar.appendChild(span);
+    leg.insertAdjacentHTML('beforeend',
+      '<span class="li"><span class="sw" style="background:'+(CLASS_COLOR[p.name]||CLASS_COLOR.other)+'"></span>'
+      + p.name+' '+(p.total/TOTAL_DETS*100).toFixed(0)+'%</span>');
+  });
+}
+
+/* ============================================================
+   Coverage donut — 18 of 80
+   ============================================================ */
+function renderDonut(){
+  var svg=$('donut'); svg.innerHTML='';
+  var cx=110, cy=110, r=78, sw=26, C=2*Math.PI*r;
+  var seen=18, total=80, frac=seen/total;
+  svg.appendChild(el('circle',{cx:cx,cy:cy,r:r,style:'fill:none;stroke:var(--track);stroke-width:'+sw}));
+  var arc=el('circle',{cx:cx,cy:cy,r:r,
+    'stroke-dasharray':C, 'stroke-dashoffset':C,
+    transform:'rotate(-90 '+cx+' '+cy+')',
+    style:'fill:none;stroke:var(--accent);stroke-width:'+sw+';stroke-linecap:round'});
+  svg.appendChild(arc);
+  var big=el('text',{x:cx,y:cy-2,'text-anchor':'middle','font-size':'34','font-weight':'700',style:'fill:var(--heading)'});
+  big.textContent='18';
+  var sub=el('text',{x:cx,y:cy+20,'text-anchor':'middle','font-size':'12'});
+  sub.textContent='of 80 classes';
+  svg.appendChild(big); svg.appendChild(sub);
+  // animate
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(reduce){ arc.setAttribute('stroke-dashoffset', C*(1-frac)); return; }
+  var start=null, dur=900;
+  function step(ts){ if(!start) start=ts; var p=Math.min((ts-start)/dur,1); var e=1-Math.pow(1-p,3);
+    arc.setAttribute('stroke-dashoffset', C*(1-frac*e)); if(p<1) requestAnimationFrame(step); }
+  requestAnimationFrame(step);
+}
+
+/* ============================================================
+   Activity line/area chart — objects per sampled frame
+   ============================================================ */
+function renderActivity(){
+  var svg=$('activity'); svg.innerHTML='';
+  var W=760, H=280, mL=34, mR=12, mT=14, mB=26;
+  var plotW=W-mL-mR, plotH=H-mT-mB;
+  var maxN=40;
+  function x(t){ return mL + (t/DURATION)*plotW; }
+  function y(n){ return mT + plotH - (n/maxN)*plotH; }
+
+  // segment bands
+  SEGMENTS.forEach(function(s,i){
+    var x0=x(s.t0), x1=x(s.t1);
+    var band=el('rect',{x:x0,y:mT,width:(x1-x0),height:plotH,opacity:'0.5',style:'fill:'+(i%2?'var(--grid-line)':'transparent')});
+    svg.appendChild(band);
+    var lbl=el('text',{x:(x0+x1)/2,y:mT+11,'text-anchor':'middle','font-size':'9'});
+    lbl.textContent='T'+(i+1); svg.appendChild(lbl);
+  });
+  // y gridlines
+  [0,10,20,30,40].forEach(function(g){
+    var yy=y(g);
+    svg.appendChild(el('line',{x1:mL,y1:yy,x2:W-mR,y2:yy,class:'axis-line'}));
+    var t=el('text',{x:mL-6,y:yy+3,'text-anchor':'end','font-size':'9'}); t.textContent=g; svg.appendChild(t);
+  });
+  // build path
+  var dLine='', dArea='';
+  FRAMES.forEach(function(fr,i){
+    var px=x(fr.t), py=y(fr.n);
+    dLine += (i===0?'M':'L')+px.toFixed(1)+' '+py.toFixed(1)+' ';
+  });
+  dArea = dLine + 'L'+x(FRAMES[FRAMES.length-1].t).toFixed(1)+' '+(mT+plotH)+' L'+x(FRAMES[0].t).toFixed(1)+' '+(mT+plotH)+' Z';
+  // gradient
+  var defs=el('defs',{});
+  var grad=el('linearGradient',{id:'actGrad',x1:'0',y1:'0',x2:'0',y2:'1'});
+  grad.appendChild(el('stop',{offset:'0%',style:'stop-color:var(--accent);stop-opacity:0.34'}));
+  grad.appendChild(el('stop',{offset:'100%',style:'stop-color:var(--accent);stop-opacity:0.02'}));
+  defs.appendChild(grad); svg.appendChild(defs);
+  svg.appendChild(el('path',{d:dArea,style:'fill:url(#actGrad);stroke:none'}));
+  svg.appendChild(el('path',{d:dLine,'stroke-linejoin':'round','stroke-linecap':'round',style:'fill:none;stroke:var(--accent);stroke-width:2.4'}));
+
+  // points + peak marker
+  var peak=FRAMES.reduce(function(a,b){return b.n>a.n?b:a;},FRAMES[0]);
+  FRAMES.forEach(function(fr){
+    var isPeak = fr===peak;
+    var c=el('circle',{cx:x(fr.t),cy:y(fr.n),r:isPeak?5:3.4,cursor:'pointer',
+      style:'stroke-width:2;fill:'+(isPeak?'var(--gold)':'var(--bg-card)')+';stroke:'+(isPeak?'var(--gold)':'var(--accent)')});
+    c.setAttribute('data-tip', fr.n+' objects · '+fr.t+'s (T'+(fr.s+1)+')');
+    attachTip(c);
+    c.addEventListener('click', function(){ seekTo(fr.t); });
+    svg.appendChild(c);
+  });
+  // peak label
+  var pl=el('text',{x:x(peak.t),y:y(peak.n)-11,'text-anchor':'middle','font-size':'10','font-weight':'700',style:'fill:var(--gold)'});
+  pl.textContent='peak '+peak.n+' @ '+peak.t+'s'; svg.appendChild(pl);
+}
+
+/* ============================================================
+   Stacked-area class flow across the 8 segments (100% normalized)
+   ============================================================ */
+var FLOW_ORDER = ['car','truck','person','bus','motorcycle','train','cup','tie','scissors','airplane','other'];
+function renderFlow(){
+  var svg=$('flow'); svg.innerHTML='';
+  var W=760, H=360, mL=12, mR=12, mT=22, mB=30;
+  var plotW=W-mL-mR, plotH=H-mT-mB;
+  var n=SEG_CLASSES.length;
+
+  // normalized cumulative tops per segment: cum[i][order] = fraction boundary
+  var segShare = SEG_CLASSES.map(function(sc){
+    var tot=0; for(var k in sc) tot+=sc[k];
+    var o={}; FLOW_ORDER.forEach(function(name){ o[name]=(sc[name]||0)/tot; });
+    return o;
+  });
+  // x for segment i (use index midpoints across plot)
+  function xAt(i){ return mL + (n===1?0.5:i/(n-1))*plotW; }
+  function yAt(frac){ return mT + frac*plotH; }
+
+  // for each class, build a ribbon: top boundary across segments and bottom boundary
+  // cumulative top BEFORE this class at each segment
+  var cumBefore = SEG_CLASSES.map(function(){ return 0; });
+  FLOW_ORDER.forEach(function(name){
+    var tops=[], bots=[];
+    for(var i=0;i<n;i++){
+      var top=cumBefore[i];
+      var h=segShare[i][name];
+      tops.push(top); bots.push(top+h);
+      cumBefore[i]=top+h;
+    }
+    // skip empty class
+    var anyH = bots.some(function(b,i){return (b-tops[i])>0.0005;});
+    if(!anyH) return;
+    // path: top edge L->R (smooth), then bottom edge R->L
+    var d='';
+    for(var i=0;i<n;i++){
+      var px=xAt(i), py=yAt(tops[i]);
+      if(i===0){ d+='M'+px.toFixed(1)+' '+py.toFixed(1)+' '; }
+      else { var pxm=(xAt(i-1)+px)/2; d+='C'+pxm.toFixed(1)+' '+yAt(tops[i-1]).toFixed(1)+' '+pxm.toFixed(1)+' '+py.toFixed(1)+' '+px.toFixed(1)+' '+py.toFixed(1)+' '; }
+    }
+    for(var i=n-1;i>=0;i--){
+      var px=xAt(i), py=yAt(bots[i]);
+      if(i===n-1){ d+='L'+px.toFixed(1)+' '+py.toFixed(1)+' '; }
+      else { var pxm=(xAt(i+1)+px)/2; d+='C'+pxm.toFixed(1)+' '+yAt(bots[i+1]).toFixed(1)+' '+pxm.toFixed(1)+' '+py.toFixed(1)+' '+px.toFixed(1)+' '+py.toFixed(1)+' '; }
+    }
+    d+='Z';
+    var band=el('path',{d:d,fill:CLASS_COLOR[name]||CLASS_COLOR.other,opacity:'0.82',cursor:'pointer',style:'stroke:var(--bg-card);stroke-width:0.6'});
+    band.classList.add('flow-band'); band.dataset.cls=name;
+    band.addEventListener('mouseenter', function(){
+      svg.querySelectorAll('.flow-band').forEach(function(b){ b.setAttribute('opacity', b.dataset.cls===name?'0.95':'0.18'); });
+    });
+    band.addEventListener('mouseleave', function(){
+      svg.querySelectorAll('.flow-band').forEach(function(b){ b.setAttribute('opacity','0.82'); });
+    });
+    // tooltip: per-segment share
+    band.setAttribute('data-tip', name);
+    attachTip(band, function(){
+      var parts=[]; for(var i=0;i<n;i++){ var c=SEG_CLASSES[i][name]||0; if(c) parts.push('T'+(i+1)+': '+c); }
+      return name+' — '+parts.join(' · ');
+    });
+    svg.appendChild(band);
+  });
+
+  // x labels (segments) + click to seek
+  for(var i=0;i<n;i++){
+    var px=xAt(i);
+    var t=el('text',{x:px,y:H-12,'text-anchor':'middle','font-size':'10',fill:'var(--text-faint)',cursor:'pointer'});
+    t.textContent='T'+(i+1);
+    (function(idx){ t.addEventListener('click', function(){ seekTo(SEGMENTS[idx].t0); }); })(i);
+    svg.appendChild(t);
+  }
+  // top axis 0% / 100%
+  var a1=el('text',{x:mL,y:mT-7,'font-size':'9'}); a1.textContent='share of detections →'; svg.appendChild(a1);
+
+  // legend
+  var leg=$('flowlegend'); leg.innerHTML='';
+  FLOW_ORDER.forEach(function(name){
+    leg.insertAdjacentHTML('beforeend',
+      '<span class="li"><span class="sw" style="background:'+(CLASS_COLOR[name]||CLASS_COLOR.other)+'"></span>'+name+'</span>');
+  });
+}
+
+/* ============================================================
+   Frame gallery (grouped by segment)
+   ============================================================ */
+function renderGallery(){
+  var g=$('gallery'); g.innerHTML='';
+  SEGMENTS.forEach(function(s,si){
+    var wrap=document.createElement('div'); wrap.className='gal-seg';
+    var color = s.label.indexOf('Peak')>=0 ? 'var(--red)' : s.label==='Building' ? 'var(--gold)' : 'var(--accent)';
+    wrap.innerHTML = '<div class="gal-seg-h">'
+      + '<span class="badge" style="background:'+color+'">T'+(si+1)+'</span>'
+      + '<span class="lab">'+fmtTime(s.t0)+'–'+fmtTime(s.t1)+' · '+s.label+' · '+s.perFrame+' obj/frame</span></div>';
+    var row=document.createElement('div'); row.className='gal-row';
+    FRAMES.filter(function(fr){return fr.s===si;}).forEach(function(fr){
+      var fdiv=document.createElement('div'); fdiv.className='frame';
+      fdiv.setAttribute('role','button'); fdiv.setAttribute('tabindex','0');
+      fdiv.setAttribute('aria-label','Jump to '+fr.t+' seconds — '+fr.n+' objects detected');
+      fdiv.innerHTML='<img loading="lazy" src="'+fr.f+'" alt="Detected frame at '+fr.t+'s with '+fr.n+' objects" />'
+        + '<div class="fcap mono"><span>'+fr.t+'s</span><span>'+fr.n+' obj</span></div>';
+      fdiv.addEventListener('click', function(){ seekTo(fr.t); });
+      fdiv.addEventListener('keydown', function(e){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); seekTo(fr.t); } });
+      row.appendChild(fdiv);
+    });
+    wrap.appendChild(row); g.appendChild(wrap);
+  });
+}
+
+/* ============================================================
+   Timeline bar
+   ============================================================ */
+function renderTimeline(){
+  var bar=$('tbar'); bar.innerHTML='';
+  var maxPF=Math.max.apply(null, SEGMENTS.map(function(s){return s.perFrame;}));
+  var minPF=Math.min.apply(null, SEGMENTS.map(function(s){return s.perFrame;}));
+  SEGMENTS.forEach(function(s,i){
+    var seg=document.createElement('div');
+    seg.className='tseg'; seg.dataset.seg=i;
+    seg.style.flex=(s.t1-s.t0);
+    // color intensity by perFrame (accent, lightness via opacity over accent)
+    var k=(s.perFrame-minPF)/(maxPF-minPF||1);
+    seg.style.background='color-mix(in srgb, var(--accent) '+(35+k*55)+'%, var(--bg-elev))';
+    seg.innerHTML='<span class="tl">T'+(i+1)+'</span><span class="tn">'+s.perFrame+'</span>';
+    seg.setAttribute('role','button'); seg.setAttribute('tabindex','0');
+    seg.setAttribute('aria-label','Segment '+(i+1)+', '+fmtTime(s.t0)+' to '+fmtTime(s.t1)+', '+s.perFrame+' objects per frame');
+    seg.addEventListener('click', function(){ seekTo(s.t0); });
+    seg.addEventListener('keydown', function(e){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); seekTo(s.t0); } });
+    bar.appendChild(seg);
+  });
+  var busiest=SEGMENTS.reduce(function(a,b,i){return b.perFrame>SEGMENTS[a].perFrame?i:a;},0);
+  $('tl-busiest').textContent='busiest: T'+(busiest+1)+' ('+SEGMENTS[busiest].perFrame+'/frame)';
+}
+
+/* fallback if color-mix unsupported */
+function timelineColorFallback(){
+  if(window.CSS && CSS.supports && CSS.supports('background','color-mix(in srgb, red 50%, blue)')) return;
+  document.querySelectorAll('.tseg').forEach(function(seg){
+    var i=+seg.dataset.seg, s=SEGMENTS[i];
+    var maxPF=Math.max.apply(null, SEGMENTS.map(function(x){return x.perFrame;}));
+    var k=s.perFrame/maxPF;
+    seg.style.background='rgba(93,76,224,'+(0.35+k*0.5).toFixed(2)+')';
+  });
+}
+
+/* ============================================================
+   Sync: video time -> readout + active segment
+   ============================================================ */
+function segIndexAt(t){
+  for(var i=0;i<SEGMENTS.length;i++){ if(t>=SEGMENTS[i].t0 && t<SEGMENTS[i].t1) return i; }
+  return SEGMENTS.length-1;
+}
+function nearestFrame(t){
+  var best=FRAMES[0], bd=Infinity;
+  FRAMES.forEach(function(fr){ var d=Math.abs(fr.t-t); if(d<bd){bd=d;best=fr;} });
+  return best;
+}
+function updateReadout(t){
+  var si=segIndexAt(t), s=SEGMENTS[si];
+  $('ro-time').textContent=t.toFixed(1)+'s';
+  $('ro-seg').textContent='Segment '+(si+1)+' · '+s.label;
+  $('ro-perframe').textContent=s.perFrame;
+  $('ro-dets').textContent=s.dets;
+  var fr=nearestFrame(t);
+  var img=$('ro-frame');
+  if(img.getAttribute('src')!==fr.f) img.setAttribute('src', fr.f);
+  $('ro-frame-t').textContent=fr.t+'s';
+  $('ro-frame-n').textContent=fr.n+' objects';
+  // active timeline seg
+  document.querySelectorAll('.tseg').forEach(function(seg){ seg.classList.toggle('active', +seg.dataset.seg===si); });
+}
+function seekTo(t){
+  if(!vid) return;
+  try { vid.currentTime=t; } catch(e){}
+  updateReadout(t);
+  vid.play().catch(function(){});
+  document.getElementById('watch').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+/* ============================================================
+   Tooltip
+   ============================================================ */
+var tip=$('tooltip');
+function attachTip(node, fn){
+  node.addEventListener('mouseenter', function(e){
+    var txt = fn ? fn() : node.getAttribute('data-tip');
+    if(!txt) return;
+    var parts=txt.split(' — ');
+    $('tt-t').textContent=parts[0];
+    $('tt-s').textContent=parts.length>1?parts.slice(1).join(' — '):(node.getAttribute('data-tip2')||'');
+    tip.style.opacity='1';
+    moveTip(e);
+  });
+  node.addEventListener('mousemove', moveTip);
+  node.addEventListener('mouseleave', function(){ tip.style.opacity='0'; });
+}
+function moveTip(e){
+  var x=e.clientX+14, y=e.clientY+14;
+  var r=tip.getBoundingClientRect();
+  if(x+r.width>window.innerWidth-8) x=e.clientX-r.width-14;
+  if(y+r.height>window.innerHeight-8) y=e.clientY-r.height-14;
+  tip.style.left=x+'px'; tip.style.top=y+'px';
+}
+
+/* ============================================================
+   Theme toggle (persisted, shared key with main site)
+   ============================================================ */
+function initTheme(){
+  var root=document.documentElement, btn=$('themeToggle'), meta=$('themeColorMeta');
+  var COLORS={light:'#f4f2ee',dark:'#0a0c12'};
+  function cur(){ return root.getAttribute('data-theme')==='dark'?'dark':'light'; }
+  function apply(t){ root.setAttribute('data-theme',t); if(meta) meta.setAttribute('content',COLORS[t]); }
+  apply(cur());
+  btn.addEventListener('click', function(){
+    var next=cur()==='light'?'dark':'light'; apply(next);
+    try{ localStorage.setItem('theme',next); }catch(e){}
+    // a few colors are theme-dependent in SVG; re-render charts
+    renderDonut(); renderActivity(); renderFlow();
+  });
+}
+
+/* ============================================================
+   Boot
+   ============================================================ */
+document.addEventListener('DOMContentLoaded', function(){
+  renderInsight();
+  renderPropbar();
+  renderDonut();
+  renderActivity();
+  renderFlow();
+  renderGallery();
+  renderTimeline();
+  timelineColorFallback();
+  initTheme();
+  updateReadout(0);
+  if(vid){
+    vid.addEventListener('timeupdate', function(){ updateReadout(vid.currentTime); });
+    vid.addEventListener('seeked', function(){ updateReadout(vid.currentTime); });
+  }
+});
+</script>
+</body>
+</html>

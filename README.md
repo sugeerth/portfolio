@@ -1,8 +1,8 @@
 # Sugeerth Murugesan — Portfolio
 
-A fast, single-page portfolio for an ML / AI Research Engineer, showcasing 13 projects across
-LLM training infrastructure, agentic systems, retrieval-augmented generation, and observability —
-research-grade ideas built into working systems.
+A fast, single-page portfolio for an ML / AI Research Engineer, showcasing 15 projects across
+LLM training infrastructure, agentic systems, retrieval-augmented generation, observability, and
+computer vision — research-grade ideas built into working systems.
 
 **Live site:** https://sugeerth.github.io/portfolio/
 
@@ -13,6 +13,7 @@ research-grade ideas built into working systems.
 | deepseed — real-time DeepSpeed training dashboard | LLM Training & Infra | yes |
 | ML System Design Handbook — FAANG-grade handbook | ML Education | yes |
 | GNN Explorer — Graph Neural Network explorer | ML Education | yes |
+| Traffic Vision — honest object detection on traffic video | ML Education | yes |
 | agent-trace-viz — observability tracer for AI agents | Observability | — |
 | Production RAG — production-grade RAG system | RAG & Retrieval | — |
 | VoyageAI — multi-agent travel planner | AI Agents | — |
@@ -23,7 +24,7 @@ research-grade ideas built into working systems.
 | Multimodal Training Sweep — training-sweep orchestrator | LLM Training & Infra | — |
 | Self-Learning LLM Training — self-learning training loop | AI Agents | — |
 
-Four projects ship with an embedded, fully interactive static live demo under `demos/`.
+Five projects ship with an embedded, fully interactive static live demo under `demos/`.
 
 ## Tech
 

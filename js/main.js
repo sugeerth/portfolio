@@ -67,6 +67,17 @@ const PROJECTS = [
     demo: 'https://sugeerth.github.io/gnn/'
   },
   {
+    name: 'Traffic Vision',
+    category: 'ML Education',
+    tagline: 'What an off-the-shelf detector really sees in traffic.',
+    desc: 'Runs open-source Faster R-CNN frame-by-frame over 60s of 4K traffic — 5,136 detections — then honestly shows what it nails (cars, trucks, people) and where it goes confidently wrong (a bus read as a "train"). Interactive video, activity timeline, charts, and 40 real annotated frames — all in your browser.',
+    tech: ['PyTorch', 'torchvision', 'Faster R-CNN', 'OpenCV'],
+    featured: true,
+    visibility: 'public',
+    code: 'https://github.com/sugeerth/video-story-analyzer',
+    demo: 'demos/traffic-vision/'
+  },
+  {
     name: 'agent-trace-viz',
     category: 'Observability',
     tagline: 'Drop-in observability tracer for AI agents.',
